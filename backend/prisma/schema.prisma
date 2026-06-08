@@ -1,0 +1,194 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "windows"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  username      String    @unique
+  password      String
+  firstName     String    @default("")
+  lastName      String    @default("")
+  phone         String    @default("")
+  country       String    @default("")
+  avatar        String    @default("")
+  role          String    @default("USER") // USER, ADMIN
+  status        String    @default("ACTIVE") // ACTIVE, BANNED, SUSPENDED
+  kycStatus     String    @default("NONE") // NONE, PENDING, APPROVED, REJECTED
+  twoFAEnabled  Boolean   @default(false)
+  twoFASecret   String    @default("")
+  emailVerified Boolean   @default(false)
+  referralCode  String    @unique @default(uuid())
+  referredBy    String    @default("")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  wallet        Wallet[]
+  orders        Order[]
+  p2pAds        P2PAd[]
+  p2pOrdersSell P2POrder[] @relation("seller")
+  p2pOrdersBuy  P2POrder[] @relation("buyer")
+  p2pChats      P2PChat[]
+  notifications Notification[]
+  sessions      Session[]
+  adminLogs     AdminLog[]
+}
+
+model Wallet {
+  id            String   @id @default(uuid())
+  userId        String
+  coin          String
+  balance       Float    @default(0)
+  lockedBalance Float    @default(0)
+  address       String   @default("")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id])
+  transactions  Transaction[]
+
+  @@unique([userId, coin])
+}
+
+model Transaction {
+  id        String   @id @default(uuid())
+  walletId  String
+  type      String   // DEPOSIT, WITHDRAW, TRADE, P2P, TRANSFER
+  coin      String
+  amount    Float
+  fee       Float    @default(0)
+  status    String   @default("PENDING") // PENDING, COMPLETED, FAILED, CANCELLED
+  txHash    String   @default("")
+  note      String   @default("")
+  createdAt DateTime @default(now())
+
+  wallet    Wallet   @relation(fields: [walletId], references: [id])
+}
+
+model Order {
+  id        String   @id @default(uuid())
+  userId    String
+  pair      String
+  type      String   // LIMIT, MARKET
+  side      String   // BUY, SELL
+  price     Float
+  amount    Float
+  filled    Float    @default(0)
+  status    String   @default("OPEN") // OPEN, PARTIALLY_FILLED, FILLED, CANCELLED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model P2PAd {
+  id            String     @id @default(uuid())
+  userId        String
+  type          String     // BUY, SELL
+  coin          String
+  currency      String     @default("USD")
+  price         Float
+  minAmount     Float
+  maxAmount     Float
+  totalAmount   Float
+  availableAmount Float
+  paymentMethod String
+  terms         String     @default("")
+  status        String     @default("ACTIVE") // ACTIVE, INACTIVE, COMPLETED
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  user          User       @relation(fields: [userId], references: [id])
+  orders        P2POrder[]
+}
+
+model P2POrder {
+  id         String    @id @default(uuid())
+  adId       String
+  sellerId   String
+  buyerId    String
+  coin       String
+  price      Float
+  amount     Float
+  total      Float
+  status     String    @default("PENDING") // PENDING, PAID, RELEASED, CANCELLED, DISPUTED
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  ad         P2PAd     @relation(fields: [adId], references: [id])
+  seller     User      @relation("seller", fields: [sellerId], references: [id])
+  buyer      User      @relation("buyer", fields: [buyerId], references: [id])
+  chats      P2PChat[]
+}
+
+model P2PChat {
+  id        String   @id @default(uuid())
+  orderId   String
+  senderId  String
+  message   String
+  createdAt DateTime @default(now())
+
+  order     P2POrder @relation(fields: [orderId], references: [id])
+  sender    User     @relation(fields: [senderId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String   // ORDER, P2P, SYSTEM, PRICE_ALERT
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  device    String   @default("")
+  ip        String   @default("")
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Announcement {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  type      String   @default("INFO") // INFO, WARNING, SUCCESS
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AdminLog {
+  id           String   @id @default(uuid())
+  adminId      String
+  action       String
+  targetUserId String   @default("")
+  details      String   @default("")
+  createdAt    DateTime @default(now())
+
+  admin        User     @relation(fields: [adminId], references: [id])
+}
+
+model PriceAlert {
+  id        String   @id @default(uuid())
+  userId    String
+  coin      String
+  condition String   // ABOVE, BELOW
+  price     Float
+  triggered Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
