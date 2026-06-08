@@ -93,7 +93,7 @@ export default function BottomNav() {
         </Link>
 
         {/* Trade */}
-        <Link href="/trade/BTCUSDT?view=trade" className={`mobile-nav-item ${isActive('/trade') ? 'active' : ''}`}>
+        <Link href="/trade/BTCUSDT" className={`mobile-nav-item ${isActive('/trade') ? 'active' : ''}`}>
           <svg className="mobile-nav-icon" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="16 3 21 3 21 8" />
             <line x1="4" y1="20" x2="21" y2="3" />
