@@ -181,6 +181,32 @@ export default function Trade({ params }) {
   const [tradeMode, setTradeMode] = useState('Spot'); // Spot, Cross, Isolated, Grid
   const [tradeType, setTradeType] = useState('Market'); // Limit, Market, Stop Limit
   const [mobileTradeSide, setMobileTradeSide] = useState('BUY');
+  const [mobileView, setMobileView] = useState('CHART'); // 'CHART' | 'TRADE'
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('view') === 'trade') {
+        setMobileView('TRADE');
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      if (mobileView === 'CHART') {
+        document.body.classList.add('hide-bottom-nav');
+      } else {
+        document.body.classList.remove('hide-bottom-nav');
+      }
+    }
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.body.classList.remove('hide-bottom-nav');
+      }
+    };
+  }, [mobileView]);
+
   const [priceInput, setPriceInput] = useState('');
   const [buyAmountInput, setBuyAmountInput] = useState('');  // coin qty — used for Limit/StopLimit BUY
   const [buyTotalInput, setBuyTotalInput] = useState('');    // USDT    — used for Market BUY
@@ -588,12 +614,120 @@ export default function Trade({ params }) {
     );
   };
 
+  const renderMobileChartScreen = () => {
+    const isChangePositive = ticker.change >= 0;
+    const buyRatio = 48.2 + Math.sin(Date.now() / 10000) * 4;
+    const sellRatio = 100 - buyRatio;
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', width: '100%', boxSizing: 'border-box' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', position: 'sticky', top: 0, zIndex: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '18px', cursor: 'pointer', color: 'var(--text-primary)' }} onClick={() => router.back()}>←</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+              <span style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{baseAsset}/USDT</span>
+              <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>▼</span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <span onClick={(e) => toggleFavorite(pair, e)} style={{ color: favorites.includes(pair) ? 'var(--primary)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: '18px', userSelect: 'none' }}>{favorites.includes(pair) ? '★' : '☆'}</span>
+            <span style={{ fontSize: '16px', cursor: 'pointer', color: 'var(--text-secondary)' }}>🔔</span>
+            <span style={{ fontSize: '16px', cursor: 'pointer', color: 'var(--text-secondary)' }}>🔍</span>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '20px', borderBottom: '1px solid var(--border-color)', padding: '0 16px', backgroundColor: 'var(--bg-secondary)' }}>
+          {['Price', 'Info', 'Trading Data', 'Square'].map((tab, i) => (
+            <span key={tab} style={{ padding: '10px 0', fontSize: '13px', fontWeight: i === 0 ? '700' : '400', color: i === 0 ? 'var(--primary)' : 'var(--text-secondary)', borderBottom: i === 0 ? '2px solid var(--primary)' : '2px solid transparent', cursor: 'pointer' }}>{tab}</span>
+          ))}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px', backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)' }}>
+          <div>
+            <div style={{ fontSize: '28px', fontWeight: '800', color: 'var(--text-primary)' }}>{ticker.price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>≈ {fmt(ticker.price)}</span>
+              <span style={{ fontSize: '12px', fontWeight: 'bold', color: isChangePositive ? 'var(--success)' : 'var(--danger)' }}>{isChangePositive ? '+' : ''}{ticker.change?.toFixed(2)}%</span>
+            </div>
+            <div style={{ display: 'flex', gap: '6px', marginTop: '12px' }}>
+              <span style={{ fontSize: '9px', backgroundColor: 'var(--bg-tertiary)', padding: '2px 6px', borderRadius: '2px', color: 'var(--text-secondary)' }}>Layer 1</span>
+              <span style={{ fontSize: '9px', backgroundColor: 'var(--bg-tertiary)', padding: '2px 6px', borderRadius: '2px', color: 'var(--text-secondary)' }}>Vol</span>
+              <span style={{ fontSize: '9px', backgroundColor: 'var(--bg-tertiary)', padding: '2px 6px', borderRadius: '2px', color: 'var(--text-secondary)' }}>Price Protection</span>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px', fontSize: '11px', color: 'var(--text-secondary)', minWidth: '160px', textAlign: 'right' }}>
+            <div><div style={{ color: 'var(--text-muted)' }}>24h High</div><div style={{ color: 'var(--text-primary)', fontWeight: '500', marginTop: '2px' }}>{ticker.high?.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div></div>
+            <div><div style={{ color: 'var(--text-muted)' }}>24h Vol({baseAsset})</div><div style={{ color: 'var(--text-primary)', fontWeight: '500', marginTop: '2px' }}>{ticker.volume?.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div></div>
+            <div><div style={{ color: 'var(--text-muted)' }}>24h Low</div><div style={{ color: 'var(--text-primary)', fontWeight: '500', marginTop: '2px' }}>{ticker.low?.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div></div>
+            <div><div style={{ color: 'var(--text-muted)' }}>24h Vol(USDT)</div><div style={{ color: 'var(--text-primary)', fontWeight: '500', marginTop: '2px' }}>{((ticker.volume * ticker.price) || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div></div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 16px', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', fontSize: '12px', color: 'var(--text-secondary)' }}>
+          <div style={{ display: 'flex', gap: '16px' }}><span>Time</span><span>15m</span><span>1h</span><span>4h</span><span style={{ color: 'var(--primary)', fontWeight: 'bold', borderBottom: '1px solid var(--primary)' }}>1D</span><span>More v</span></div>
+          <div><span>⚙️ 📊</span></div>
+        </div>
+        <div style={{ borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', padding: '4px 0' }}>
+          <div style={{ display: 'flex', gap: '10px', fontSize: '10px', padding: '4px 16px', color: 'var(--text-secondary)' }}><span style={{ color: '#f0b90b' }}>MA(7): {ticker.price?.toFixed(2)}</span><span style={{ color: '#ff00ff' }}>MA(25): {(ticker.price * 1.01)?.toFixed(2)}</span><span style={{ color: '#7b68ee' }}>MA(99): {(ticker.price * 0.98)?.toFixed(2)}</span></div>
+          <TradingViewChart symbol={pair} />
+        </div>
+        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: 'var(--bg-secondary)' }}>
+          <div style={{ display: 'flex', gap: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}><span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)', borderBottom: '2px solid var(--primary)', paddingBottom: '6px' }}>Order Book</span><span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Trades</span></div>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}><span style={{ color: 'var(--success)' }}>{buyRatio.toFixed(2)}% Buy</span><span style={{ color: 'var(--danger)' }}>{sellRatio.toFixed(2)}% Sell</span></div>
+            <div style={{ display: 'flex', height: '6px', borderRadius: '3px', overflow: 'hidden', width: '100%' }}><div style={{ backgroundColor: 'var(--success)', width: `${buyRatio}%` }} /><div style={{ backgroundColor: 'var(--danger)', width: `${sellRatio}%` }} /></div>
+          </div>
+        </div>
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(30, 32, 38, 0.96)', backdropFilter: 'blur(8px)', borderTop: '1px solid var(--border-color)', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '16px', zIndex: 100, paddingBottom: 'calc(10px + env(safe-area-inset-bottom))' }}>
+          <div style={{ display: 'flex', gap: '14px', color: 'var(--text-secondary)', fontSize: '11px', textAlign: 'center' }}><div><div style={{ fontSize: '16px' }}>💬</div><span>More</span></div><div><div style={{ fontSize: '16px' }}>📊</div><span>Hub</span></div><div><div style={{ fontSize: '16px' }}>🔄</div><span>Margin</span></div></div>
+          <div style={{ display: 'flex', flex: 1, gap: '10px' }}>
+            <button onClick={() => { setMobileView('TRADE'); setMobileTradeSide('BUY'); }} style={{ flex: 1, backgroundColor: 'var(--success)', color: '#fff', border: 'none', padding: '12px 0', borderRadius: '4px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer' }}>Buy</button>
+            <button onClick={() => { setMobileView('TRADE'); setMobileTradeSide('SELL'); }} style={{ flex: 1, backgroundColor: 'var(--danger)', color: '#fff', border: 'none', padding: '12px 0', borderRadius: '4px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer' }}>Sell</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderMobileTradeScreen = () => {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', width: '100%', boxSizing: 'border-box' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', position: 'sticky', top: 0, zIndex: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}><span style={{ fontSize: '18px', cursor: 'pointer', color: 'var(--text-primary)' }} onClick={() => setMobileView('CHART')}>←</span><span style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--text-primary)' }}>Spot Trade</span></div>
+          <div><button onClick={() => setMobileView('CHART')} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>📊 Chart</button></div>
+        </div>
+        <div style={{ backgroundColor: 'var(--bg-secondary)', paddingBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', borderBottom: '1px solid var(--border-color)' }}>
+            <div style={{ display: 'flex' }}>{['Spot', 'Cross', 'Isolated', 'Grid'].map(mode => { const isAct = tradeMode === mode; return <button key={mode} onClick={() => setTradeMode(mode)} style={{ background: 'none', border: 'none', borderBottom: isAct ? '2px solid var(--primary)' : '2px solid transparent', color: isAct ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: isAct ? '700' : '400', fontSize: '13px', padding: '12px 12px 10px', cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap' }}>{mode}</button>; })}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><div style={{ display: 'flex', alignItems: 'center', gap: '3px', border: '1px solid #f0b90b', borderRadius: '20px', padding: '2px 6px', fontSize: '10px', color: '#f0b90b', fontWeight: '600', whiteSpace: 'nowrap' }}>⚙ 0%</div></div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 16px', borderBottom: '1px solid var(--border-color)' }}>
+            <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>{['Limit', 'Market', 'Stop Limit'].map(type => { const isAct = tradeType === type; return <button key={type} onClick={() => setTradeType(type)} style={{ background: 'none', border: 'none', color: isAct ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: isAct ? '700' : '400', fontSize: '13px', padding: '4px 8px', cursor: 'pointer', borderRadius: '4px', backgroundColor: isAct ? 'var(--bg-tertiary)' : 'transparent', transition: 'all 0.15s' }}>{type}{type === 'Stop Limit' ? ' ▾' : ''}</button>; })}</div>
+          </div>
+          {orderSuccess && <div style={{ color: 'var(--success)', fontSize: '12px', padding: '6px 16px', backgroundColor: 'rgba(14,203,129,0.08)' }}>{orderSuccess}</div>}
+          {orderError && <div style={{ color: 'var(--danger)', fontSize: '12px', padding: '6px 16px', backgroundColor: 'rgba(246,70,93,0.08)' }}>{orderError}</div>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '12px 16px', backgroundColor: 'var(--bg-secondary)', width: '100%', boxSizing: 'border-box' }}>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '4px', width: '100%' }}><button onClick={() => setMobileTradeSide('BUY')} style={{ flex: 1, padding: '10px 0', borderRadius: '6px', fontSize: '14px', fontWeight: 'bold', backgroundColor: mobileTradeSide === 'BUY' ? '#0ecb81' : 'var(--bg-tertiary)', color: mobileTradeSide === 'BUY' ? '#fff' : 'var(--text-secondary)', transition: 'all 0.15s', border: 'none', outline: 'none' }}>Buy</button><button onClick={() => setMobileTradeSide('SELL')} style={{ flex: 1, padding: '10px 0', borderRadius: '6px', fontSize: '14px', fontWeight: 'bold', backgroundColor: mobileTradeSide === 'SELL' ? '#f6465d' : 'var(--bg-tertiary)', color: mobileTradeSide === 'SELL' ? '#fff' : 'var(--text-secondary)', transition: 'all 0.15s', border: 'none', outline: 'none' }}>Sell</button></div>
+            <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '14px', alignItems: 'start', width: '100%' }}>
+              <div style={{ overflow: 'hidden' }}>{mobileTradeSide === 'BUY' ? renderBuyForm(true) : renderSellForm(true)}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', height: '100%', justifyContent: 'space-between', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', flexDirection: 'column-reverse', gap: '4px' }}>{orderBook.asks?.slice(0, 5).map((ask, idx) => <div key={`mob-ask-${idx}`} onClick={() => setPriceInput(ask.price?.toFixed(2))} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', cursor: 'pointer', padding: '2px 4px', borderRadius: '3px', transition: 'background-color 0.1s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><span style={{ color: 'var(--danger)', fontWeight: '500' }}>{ask.price?.toFixed(2)}</span><span style={{ color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{ask.amount?.toFixed(3)}</span></div>)}</div>
+                <div style={{ borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', padding: '6px 0', margin: '6px 0', textAlign: 'center' }}><div style={{ fontSize: '13px', fontWeight: 'bold', color: ticker.change >= 0 ? 'var(--success)' : 'var(--danger)' }}>{ticker.price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>{currency !== 'USD' && <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>≈ {fmt(ticker.price)}</div>}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>{orderBook.bids?.slice(0, 5).map((bid, idx) => <div key={`mob-bid-${idx}`} onClick={() => setPriceInput(bid.price?.toFixed(2))} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', cursor: 'pointer', padding: '2px 4px', borderRadius: '3px', transition: 'background-color 0.1s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}><span style={{ color: 'var(--success)', fontWeight: '500' }}>{bid.price?.toFixed(2)}</span><span style={{ color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{bid.amount?.toFixed(3)}</span></div>)}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style={{ backgroundColor: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)', marginTop: '12px' }}>
+          <div style={{ padding: '12px 16px', fontSize: '14px', fontWeight: 'bold', borderBottom: '1px solid var(--border-color)', color: 'var(--text-primary)' }}>Open Orders ({userOrders.length})</div>
+          <div style={{ padding: '8px 16px' }}>{userOrders.length === 0 ? <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '12px' }}>No open orders</div> : <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>{userOrders.map(order => <div key={order.id} style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', fontSize: '12px' }}><div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', alignItems: 'center' }}><span style={{ fontWeight: 'bold', color: order.side === 'BUY' ? 'var(--success)' : 'var(--danger)' }}>{order.side} {order.pair}</span><button onClick={() => handleCancelOrder(order.id)} style={{ backgroundColor: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: '4px', padding: '3px 8px', fontSize: '11px', cursor: 'pointer' }}>Cancel</button></div><div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', fontFamily: 'monospace' }}><span>Price: {order.price?.toFixed(2)}</span><span>Amount: {order.amount?.toFixed(4)}</span><span>Date: {new Date(order.createdAt).toLocaleDateString()}</span></div></div>)}</div>}</div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div style={{ backgroundColor: 'var(--bg-primary)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Navbar />
 
-      {/* Header bar stats */}
-      <div style={{
+      {/* Desktop-only: Header bar stats */}
+      <div className="desktop-only" style={{
         backgroundColor: 'var(--bg-secondary)',
         borderBottom: '1px solid var(--border-color)',
         padding: '12px 24px',
@@ -662,8 +796,8 @@ export default function Trade({ params }) {
         </div>
       </div>
 
-      {/* Main trading terminal grid */}
-      <div className="trading-grid">
+      {/* Desktop-only: Main trading terminal grid */}
+      <div className="desktop-only trading-grid">
         
         {/* Left Column: Order Book */}
         <div className="trading-left-col">
@@ -807,122 +941,10 @@ export default function Trade({ params }) {
             {orderSuccess && <div style={{ color: 'var(--success)', fontSize: '12px', padding: '6px 16px', backgroundColor: 'rgba(14,203,129,0.08)' }}>{orderSuccess}</div>}
             {orderError && <div style={{ color: 'var(--danger)', fontSize: '12px', padding: '6px 16px', backgroundColor: 'rgba(246,70,93,0.08)' }}>{orderError}</div>}
 
-            {/* Desktop View: Side-by-side forms */}
-            <div className="desktop-only" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', backgroundColor: 'var(--border-color)' }}>
+            {/* Buy + Sell columns */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', backgroundColor: 'var(--border-color)' }}>
               {renderBuyForm(false)}
               {renderSellForm(false)}
-            </div>
-
-            {/* Mobile View: Toggle tabs + 60/40 Split Form & Compact Order Book */}
-            <div className="mobile-only" style={{ flexDirection: 'column', gap: '12px', padding: '12px 16px', backgroundColor: 'var(--bg-secondary)', width: '100%', boxSizing: 'border-box' }}>
-              
-              {/* Buy / Sell Tabs */}
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '4px', width: '100%' }}>
-                <button
-                  onClick={() => setMobileTradeSide('BUY')}
-                  style={{
-                    flex: 1,
-                    padding: '10px 0',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    fontWeight: 'bold',
-                    backgroundColor: mobileTradeSide === 'BUY' ? '#0ecb81' : 'var(--bg-tertiary)',
-                    color: mobileTradeSide === 'BUY' ? '#fff' : 'var(--text-secondary)',
-                    transition: 'all 0.15s',
-                    border: 'none',
-                    outline: 'none',
-                  }}
-                >
-                  Buy
-                </button>
-                <button
-                  onClick={() => setMobileTradeSide('SELL')}
-                  style={{
-                    flex: 1,
-                    padding: '10px 0',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    fontWeight: 'bold',
-                    backgroundColor: mobileTradeSide === 'SELL' ? '#f6465d' : 'var(--bg-tertiary)',
-                    color: mobileTradeSide === 'SELL' ? '#fff' : 'var(--text-secondary)',
-                    transition: 'all 0.15s',
-                    border: 'none',
-                    outline: 'none',
-                  }}
-                >
-                  Sell
-                </button>
-              </div>
-
-              {/* Grid split: 60% Form, 40% Order Book */}
-              <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '14px', alignItems: 'start', width: '100%' }}>
-                
-                {/* Form (60%) */}
-                <div style={{ overflow: 'hidden' }}>
-                  {mobileTradeSide === 'BUY' ? renderBuyForm(true) : renderSellForm(true)}
-                </div>
-
-                {/* Compact Order Book (40%) */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', height: '100%', justifyContent: 'space-between', overflow: 'hidden' }}>
-                  
-                  {/* Asks (Red) */}
-                  <div style={{ display: 'flex', flexDirection: 'column-reverse', gap: '4px' }}>
-                    {orderBook.asks?.slice(0, 5).map((ask, idx) => (
-                      <div
-                        key={`mob-ask-${idx}`}
-                        onClick={() => setPriceInput(ask.price?.toFixed(2))}
-                        style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', cursor: 'pointer', padding: '2px 4px', borderRadius: '3px', transition: 'background-color 0.1s' }}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
-                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >
-                        <span style={{ color: 'var(--danger)', fontWeight: '500' }}>{ask.price?.toFixed(2)}</span>
-                        <span style={{ color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{ask.amount?.toFixed(3)}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Spread Price & Conversion */}
-                  <div style={{
-                    borderTop: '1px solid var(--border-color)',
-                    borderBottom: '1px solid var(--border-color)',
-                    padding: '6px 0',
-                    margin: '6px 0',
-                    textAlign: 'center',
-                  }}>
-                    <div style={{
-                      fontSize: '13px',
-                      fontWeight: 'bold',
-                      color: ticker.change >= 0 ? 'var(--success)' : 'var(--danger)',
-                    }}>
-                      {ticker.price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </div>
-                    {currency !== 'USD' && (
-                      <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                        ≈ {fmt(ticker.price)}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Bids (Green) */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    {orderBook.bids?.slice(0, 5).map((bid, idx) => (
-                      <div
-                        key={`mob-bid-${idx}`}
-                        onClick={() => setPriceInput(bid.price?.toFixed(2))}
-                        style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', cursor: 'pointer', padding: '2px 4px', borderRadius: '3px', transition: 'background-color 0.1s' }}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
-                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >
-                        <span style={{ color: 'var(--success)', fontWeight: '500' }}>{bid.price?.toFixed(2)}</span>
-                        <span style={{ color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{bid.amount?.toFixed(3)}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                </div>
-
-              </div>
-
             </div>
           </div>
         </div>
@@ -1116,7 +1138,7 @@ export default function Trade({ params }) {
       </div>
 
       {/* ── Bottom Tabbed Orders Panel (Binance-style) ── */}
-      <div style={{ backgroundColor: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)' }}>
+      <div className="desktop-only" style={{ backgroundColor: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)' }}>
         {/* Tab Header */}
         <div style={{
           display: 'flex',
@@ -1270,7 +1292,14 @@ export default function Trade({ params }) {
         </div>
       </div>
 
-      <Footer />
+      {/* Mobile responsive view */}
+      <div className="mobile-only" style={{ flexDirection: 'column', width: '100%', backgroundColor: 'var(--bg-primary)', paddingBottom: '80px' }}>
+        {mobileView === 'CHART' ? renderMobileChartScreen() : renderMobileTradeScreen()}
+      </div>
+
+      <div className="desktop-only">
+        <Footer />
+      </div>
     </div>
   );
 }
