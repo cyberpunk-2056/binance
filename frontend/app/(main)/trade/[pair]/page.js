@@ -180,6 +180,7 @@ export default function Trade({ params }) {
   // Trading Forms
   const [tradeMode, setTradeMode] = useState('Spot'); // Spot, Cross, Isolated, Grid
   const [tradeType, setTradeType] = useState('Market'); // Limit, Market, Stop Limit
+  const [mobileTradeSide, setMobileTradeSide] = useState('BUY');
   const [priceInput, setPriceInput] = useState('');
   const [buyAmountInput, setBuyAmountInput] = useState('');  // coin qty — used for Limit/StopLimit BUY
   const [buyTotalInput, setBuyTotalInput] = useState('');    // USDT    — used for Market BUY
@@ -392,6 +393,201 @@ export default function Trade({ params }) {
 
   const isPositive = ticker.change >= 0;
 
+  const renderBuyForm = (isMobile = false) => {
+    return (
+      <div style={{ backgroundColor: 'var(--bg-secondary)', padding: isMobile ? '8px 0' : '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+
+        {/* Price field */}
+        <div style={{ backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', padding: '10px 14px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '13px', color: 'var(--text-secondary)', minWidth: '36px' }}>Price</span>
+          {tradeType === 'Market'
+            ? <span style={{ flex: 1, textAlign: 'right', fontSize: '13px', color: 'var(--text-secondary)' }}>Market Price</span>
+            : <input type="number" value={priceInput} onChange={e => setPriceInput(e.target.value)} placeholder="0.00"
+                style={{ flex: 1, background: 'none', border: 'none', outline: 'none', textAlign: 'right', color: 'var(--text-primary)', fontSize: '13px', fontWeight: '600' }} />
+          }
+          <span style={{ fontSize: '12px', color: 'var(--text-secondary)', flexShrink: 0 }}>USDT</span>
+        </div>
+
+        {/* Amount (Limit: coin qty) OR Total (Market: USDT) */}
+        {tradeType !== 'Market' ? (
+          <div style={{ backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', padding: '10px 14px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '13px', color: 'var(--text-secondary)', minWidth: '46px' }}>Amount</span>
+            <input type="number" value={buyAmountInput} onChange={e => setBuyAmountInput(e.target.value)} placeholder="0.00"
+              style={{ flex: 1, background: 'none', border: 'none', outline: 'none', textAlign: 'right', color: 'var(--text-primary)', fontSize: '13px', fontWeight: '600' }} />
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', flexShrink: 0 }}>{baseAsset}</span>
+          </div>
+        ) : (
+          <div style={{ backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', padding: '10px 14px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '13px', color: 'var(--text-secondary)', minWidth: '36px' }}>Total</span>
+            <input type="number" value={buyTotalInput} onChange={e => setBuyTotalInput(e.target.value)} placeholder="Min. 5 USDT"
+              style={{ flex: 1, background: 'none', border: 'none', outline: 'none', textAlign: 'right', color: 'var(--text-primary)', fontSize: '13px', fontWeight: '600' }} />
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', flexShrink: 0, cursor: 'pointer' }}>USDT ▾</span>
+          </div>
+        )}
+
+        {/* Slider — sets percentage of available USDT */}
+        <BinanceSlider value={buyPct} onChange={v => {
+          setBuyPct(v);
+          const usdt = wallets['USDT'] || 0;
+          if (tradeType === 'Market') {
+            setBuyTotalInput(((v / 100) * usdt).toFixed(2));
+          } else {
+            const lp = parseFloat(priceInput) || ticker.price;
+            if (lp > 0) setBuyAmountInput(((v / 100) * usdt / lp).toFixed(6));
+          }
+        }} color="#0ecb81" />
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+          <input type="checkbox" style={{ accentColor: '#f0b90b', width: '13px', height: '13px', flexShrink: 0 }} />
+          Slippage Tolerance
+        </label>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', borderTop: '1px solid var(--border-color)', paddingTop: '8px' }}>
+          {/* Calculated total (Limit) or estimated coin amount (Market) */}
+          {tradeType !== 'Market' ? (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Total</span>
+              <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                ≈ {((parseFloat(buyAmountInput) || 0) * (parseFloat(priceInput) || ticker.price)).toFixed(2)} USDT
+              </span>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>≈ You receive</span>
+              <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                {ticker.price > 0 ? ((parseFloat(buyTotalInput) || 0) / ticker.price).toFixed(6) : '0'} {baseAsset}
+              </span>
+            </div>
+          )}
+
+          {/* Available balance — clickable to fill 100% */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+            <span style={{ color: 'var(--text-secondary)' }}>Avbl</span>
+            <span
+              style={{ color: 'var(--primary)', cursor: 'pointer', fontFamily: 'monospace' }}
+              onClick={() => {
+                const usdt = wallets['USDT'] || 0;
+                if (tradeType === 'Market') {
+                  setBuyTotalInput(usdt.toFixed(2)); setBuyPct(100);
+                } else {
+                  const lp = parseFloat(priceInput) || ticker.price;
+                  if (lp > 0) { setBuyAmountInput((usdt / lp).toFixed(6)); setBuyPct(100); }
+                }
+              }}
+            >
+              {(wallets['USDT'] || 0).toFixed(2)} USDT
+            </span>
+          </div>
+
+          {/* Max Buy */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+            <span style={{ color: 'var(--text-secondary)', textDecoration: 'underline dotted', cursor: 'pointer' }}>Max Buy</span>
+            <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+              {ticker.price > 0 ? ((wallets['USDT'] || 0) / ticker.price).toFixed(6) : '0'} {baseAsset}
+            </span>
+          </div>
+
+          {/* Fee */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+            <span style={{ color: 'var(--text-secondary)', textDecoration: 'underline dotted', cursor: 'pointer' }}>Est. Fee</span>
+            <span style={{ color: 'var(--text-secondary)' }}>0.1%</span>
+          </div>
+        </div>
+
+        <button
+          onClick={() => handleOrderSubmit('BUY')} disabled={submitting}
+          style={{ backgroundColor: '#0ecb81', border: 'none', color: '#fff', padding: '13px', borderRadius: '8px', fontWeight: '700', fontSize: '15px', cursor: submitting ? 'not-allowed' : 'pointer', width: '100%', transition: 'background 0.15s', letterSpacing: '0.3px' }}
+          onMouseEnter={e => { if (!submitting) e.currentTarget.style.backgroundColor = '#0db572'; }}
+          onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0ecb81'; }}
+        >
+          {submitting ? 'Placing...' : `Buy ${baseAsset}`}
+        </button>
+      </div>
+    );
+  };
+
+  const renderSellForm = (isMobile = false) => {
+    return (
+      <div style={{ backgroundColor: 'var(--bg-secondary)', padding: isMobile ? '8px 0' : '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+
+        {/* Price field */}
+        <div style={{ backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', padding: '10px 14px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '13px', color: 'var(--text-secondary)', minWidth: '36px' }}>Price</span>
+          {tradeType === 'Market'
+            ? <span style={{ flex: 1, textAlign: 'right', fontSize: '13px', color: 'var(--text-secondary)' }}>Market Price</span>
+            : <input type="number" value={priceInput} onChange={e => setPriceInput(e.target.value)} placeholder="0.00"
+                style={{ flex: 1, background: 'none', border: 'none', outline: 'none', textAlign: 'right', color: 'var(--text-primary)', fontSize: '13px', fontWeight: '600' }} />
+          }
+          <span style={{ fontSize: '12px', color: 'var(--text-secondary)', flexShrink: 0 }}>USDT</span>
+        </div>
+
+        {/* Amount — always coin qty for sell */}
+        <div style={{ backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', padding: '10px 14px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '13px', color: 'var(--text-secondary)', minWidth: '46px' }}>Amount</span>
+          <input type="number" value={sellAmountInput} onChange={e => setSellAmountInput(e.target.value)} placeholder="0.00"
+            style={{ flex: 1, background: 'none', border: 'none', outline: 'none', textAlign: 'right', color: 'var(--text-primary)', fontSize: '13px', fontWeight: '600' }} />
+          <span style={{ fontSize: '12px', color: 'var(--text-secondary)', flexShrink: 0, cursor: 'pointer' }}>{baseAsset} ▾</span>
+        </div>
+
+        {/* Slider — sets percentage of available base coin */}
+        <BinanceSlider value={sellPct} onChange={v => {
+          setSellPct(v);
+          const coinBal = wallets[baseAsset] || 0;
+          setSellAmountInput(((v / 100) * coinBal).toFixed(6));
+        }} color="#f6465d" />
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+          <input type="checkbox" style={{ accentColor: '#f0b90b', width: '13px', height: '13px', flexShrink: 0 }} />
+          Slippage Tolerance
+        </label>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', borderTop: '1px solid var(--border-color)', paddingTop: '8px' }}>
+          {/* Calculated USDT you'll receive */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+            <span style={{ color: 'var(--text-secondary)' }}>Total</span>
+            <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+              ≈ {((parseFloat(sellAmountInput) || 0) * (tradeType === 'Market' ? ticker.price : (parseFloat(priceInput) || ticker.price))).toFixed(2)} USDT
+            </span>
+          </div>
+
+          {/* Available balance — clickable to fill 100% */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+            <span style={{ color: 'var(--text-secondary)' }}>Avbl</span>
+            <span
+              style={{ color: 'var(--primary)', cursor: 'pointer', fontFamily: 'monospace' }}
+              onClick={() => { setSellAmountInput((wallets[baseAsset] || 0).toFixed(6)); setSellPct(100); }}
+            >
+              {(wallets[baseAsset] || 0).toFixed(6)} {baseAsset}
+            </span>
+          </div>
+
+          {/* Max Sell in USDT */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+            <span style={{ color: 'var(--text-secondary)', textDecoration: 'underline dotted', cursor: 'pointer' }}>Max Sell</span>
+            <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+              ≈ {((wallets[baseAsset] || 0) * (tradeType === 'Market' ? ticker.price : (parseFloat(priceInput) || ticker.price))).toFixed(2)} USDT
+            </span>
+          </div>
+
+          {/* Fee */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+            <span style={{ color: 'var(--text-secondary)', textDecoration: 'underline dotted', cursor: 'pointer' }}>Est. Fee</span>
+            <span style={{ color: 'var(--text-secondary)' }}>0.1%</span>
+          </div>
+        </div>
+
+        <button
+          onClick={() => handleOrderSubmit('SELL')} disabled={submitting}
+          style={{ backgroundColor: '#f6465d', border: 'none', color: '#fff', padding: '13px', borderRadius: '8px', fontWeight: '700', fontSize: '15px', cursor: submitting ? 'not-allowed' : 'pointer', width: '100%', transition: 'background 0.15s', letterSpacing: '0.3px' }}
+          onMouseEnter={e => { if (!submitting) e.currentTarget.style.backgroundColor = '#d63850'; }}
+          onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#f6465d'; }}
+        >
+          {submitting ? 'Placing...' : `Sell ${baseAsset}`}
+        </button>
+      </div>
+    );
+  };
+
   return (
     <div style={{ backgroundColor: 'var(--bg-primary)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Navbar />
@@ -476,7 +672,13 @@ export default function Trade({ params }) {
           {/* Asks (Sells) - Red */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column-reverse', justifyContent: 'flex-end', gap: '3px', marginBottom: '8px' }}>
             {orderBook.asks?.slice(0, 10).map((ask, idx) => (
-              <div key={`ask-${idx}`} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+              <div
+                key={`ask-${idx}`}
+                onClick={() => setPriceInput(ask.price?.toFixed(2))}
+                style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', cursor: 'pointer', padding: '2px 4px', borderRadius: '4px', transition: 'background-color 0.1s' }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
                 <span style={{ color: 'var(--danger)' }}>{ask.price?.toFixed(2)}</span>
                 <span style={{ color: 'var(--text-secondary)' }}>{ask.amount?.toFixed(4)}</span>
                 <span style={{ color: 'var(--text-secondary)', textAlign: 'right' }}>{(ask.price * ask.amount).toFixed(2)}</span>
@@ -514,7 +716,13 @@ export default function Trade({ params }) {
           {/* Bids (Buys) - Green */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3px' }}>
             {orderBook.bids?.slice(0, 10).map((bid, idx) => (
-              <div key={`bid-${idx}`} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+              <div
+                key={`bid-${idx}`}
+                onClick={() => setPriceInput(bid.price?.toFixed(2))}
+                style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', cursor: 'pointer', padding: '2px 4px', borderRadius: '4px', transition: 'background-color 0.1s' }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
                 <span style={{ color: 'var(--success)' }}>{bid.price?.toFixed(2)}</span>
                 <span style={{ color: 'var(--text-secondary)' }}>{bid.amount?.toFixed(4)}</span>
                 <span style={{ color: 'var(--text-secondary)', textAlign: 'right' }}>{(bid.price * bid.amount).toFixed(2)}</span>
@@ -599,196 +807,120 @@ export default function Trade({ params }) {
             {orderSuccess && <div style={{ color: 'var(--success)', fontSize: '12px', padding: '6px 16px', backgroundColor: 'rgba(14,203,129,0.08)' }}>{orderSuccess}</div>}
             {orderError && <div style={{ color: 'var(--danger)', fontSize: '12px', padding: '6px 16px', backgroundColor: 'rgba(246,70,93,0.08)' }}>{orderError}</div>}
 
-            {/* Buy + Sell columns */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', backgroundColor: 'var(--border-color)' }}>
+            {/* Desktop View: Side-by-side forms */}
+            <div className="desktop-only" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', backgroundColor: 'var(--border-color)' }}>
+              {renderBuyForm(false)}
+              {renderSellForm(false)}
+            </div>
 
-              {/* BUY Column */}
-              <div style={{ backgroundColor: 'var(--bg-secondary)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-
-                {/* Price field */}
-                <div style={{ backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', padding: '10px 14px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '13px', color: 'var(--text-secondary)', minWidth: '36px' }}>Price</span>
-                  {tradeType === 'Market'
-                    ? <span style={{ flex: 1, textAlign: 'right', fontSize: '13px', color: 'var(--text-secondary)' }}>Market Price</span>
-                    : <input type="number" value={priceInput} onChange={e => setPriceInput(e.target.value)} placeholder="0.00"
-                        style={{ flex: 1, background: 'none', border: 'none', outline: 'none', textAlign: 'right', color: 'var(--text-primary)', fontSize: '13px', fontWeight: '600' }} />
-                  }
-                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)', flexShrink: 0 }}>USDT</span>
-                </div>
-
-                {/* Amount (Limit: coin qty) OR Total (Market: USDT) */}
-                {tradeType !== 'Market' ? (
-                  <div style={{ backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', padding: '10px 14px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)', minWidth: '46px' }}>Amount</span>
-                    <input type="number" value={buyAmountInput} onChange={e => setBuyAmountInput(e.target.value)} placeholder="0.00"
-                      style={{ flex: 1, background: 'none', border: 'none', outline: 'none', textAlign: 'right', color: 'var(--text-primary)', fontSize: '13px', fontWeight: '600' }} />
-                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', flexShrink: 0 }}>{baseAsset}</span>
-                  </div>
-                ) : (
-                  <div style={{ backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', padding: '10px 14px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)', minWidth: '36px' }}>Total</span>
-                    <input type="number" value={buyTotalInput} onChange={e => setBuyTotalInput(e.target.value)} placeholder="Min. 5 USDT"
-                      style={{ flex: 1, background: 'none', border: 'none', outline: 'none', textAlign: 'right', color: 'var(--text-primary)', fontSize: '13px', fontWeight: '600' }} />
-                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', flexShrink: 0, cursor: 'pointer' }}>USDT ▾</span>
-                  </div>
-                )}
-
-                {/* Slider — sets percentage of available USDT */}
-                <BinanceSlider value={buyPct} onChange={v => {
-                  setBuyPct(v);
-                  const usdt = wallets['USDT'] || 0;
-                  if (tradeType === 'Market') {
-                    setBuyTotalInput(((v / 100) * usdt).toFixed(2));
-                  } else {
-                    const lp = parseFloat(priceInput) || ticker.price;
-                    if (lp > 0) setBuyAmountInput(((v / 100) * usdt / lp).toFixed(6));
-                  }
-                }} color="#0ecb81" />
-
-                <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                  <input type="checkbox" style={{ accentColor: '#f0b90b', width: '13px', height: '13px', flexShrink: 0 }} />
-                  Slippage Tolerance
-                </label>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', borderTop: '1px solid var(--border-color)', paddingTop: '8px' }}>
-                  {/* Calculated total (Limit) or estimated coin amount (Market) */}
-                  {tradeType !== 'Market' ? (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                      <span style={{ color: 'var(--text-secondary)' }}>Total</span>
-                      <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                        ≈ {((parseFloat(buyAmountInput) || 0) * (parseFloat(priceInput) || ticker.price)).toFixed(2)} USDT
-                      </span>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                      <span style={{ color: 'var(--text-secondary)' }}>≈ You receive</span>
-                      <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                        {ticker.price > 0 ? ((parseFloat(buyTotalInput) || 0) / ticker.price).toFixed(6) : '0'} {baseAsset}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Available balance — clickable to fill 100% */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>Avbl</span>
-                    <span
-                      style={{ color: 'var(--primary)', cursor: 'pointer', fontFamily: 'monospace' }}
-                      onClick={() => {
-                        const usdt = wallets['USDT'] || 0;
-                        if (tradeType === 'Market') {
-                          setBuyTotalInput(usdt.toFixed(2)); setBuyPct(100);
-                        } else {
-                          const lp = parseFloat(priceInput) || ticker.price;
-                          if (lp > 0) { setBuyAmountInput((usdt / lp).toFixed(6)); setBuyPct(100); }
-                        }
-                      }}
-                    >
-                      {(wallets['USDT'] || 0).toFixed(2)} USDT
-                    </span>
-                  </div>
-
-                  {/* Max Buy */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                    <span style={{ color: 'var(--text-secondary)', textDecoration: 'underline dotted', cursor: 'pointer' }}>Max Buy</span>
-                    <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                      {ticker.price > 0 ? ((wallets['USDT'] || 0) / ticker.price).toFixed(6) : '0'} {baseAsset}
-                    </span>
-                  </div>
-
-                  {/* Fee */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                    <span style={{ color: 'var(--text-secondary)', textDecoration: 'underline dotted', cursor: 'pointer' }}>Est. Fee</span>
-                    <span style={{ color: 'var(--text-secondary)' }}>0.1%</span>
-                  </div>
-                </div>
-
+            {/* Mobile View: Toggle tabs + 60/40 Split Form & Compact Order Book */}
+            <div className="mobile-only" style={{ flexDirection: 'column', gap: '12px', padding: '12px 16px', backgroundColor: 'var(--bg-secondary)', width: '100%', boxSizing: 'border-box' }}>
+              
+              {/* Buy / Sell Tabs */}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '4px', width: '100%' }}>
                 <button
-                  onClick={() => handleOrderSubmit('BUY')} disabled={submitting}
-                  style={{ backgroundColor: '#0ecb81', border: 'none', color: '#fff', padding: '13px', borderRadius: '8px', fontWeight: '700', fontSize: '15px', cursor: submitting ? 'not-allowed' : 'pointer', width: '100%', transition: 'background 0.15s', letterSpacing: '0.3px' }}
-                  onMouseEnter={e => { if (!submitting) e.currentTarget.style.backgroundColor = '#0db572'; }}
-                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0ecb81'; }}
+                  onClick={() => setMobileTradeSide('BUY')}
+                  style={{
+                    flex: 1,
+                    padding: '10px 0',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    backgroundColor: mobileTradeSide === 'BUY' ? '#0ecb81' : 'var(--bg-tertiary)',
+                    color: mobileTradeSide === 'BUY' ? '#fff' : 'var(--text-secondary)',
+                    transition: 'all 0.15s',
+                    border: 'none',
+                    outline: 'none',
+                  }}
                 >
-                  {submitting ? 'Placing...' : `Buy ${baseAsset}`}
+                  Buy
+                </button>
+                <button
+                  onClick={() => setMobileTradeSide('SELL')}
+                  style={{
+                    flex: 1,
+                    padding: '10px 0',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    backgroundColor: mobileTradeSide === 'SELL' ? '#f6465d' : 'var(--bg-tertiary)',
+                    color: mobileTradeSide === 'SELL' ? '#fff' : 'var(--text-secondary)',
+                    transition: 'all 0.15s',
+                    border: 'none',
+                    outline: 'none',
+                  }}
+                >
+                  Sell
                 </button>
               </div>
 
-              {/* SELL Column */}
-              <div style={{ backgroundColor: 'var(--bg-secondary)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-
-                {/* Price field */}
-                <div style={{ backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', padding: '10px 14px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '13px', color: 'var(--text-secondary)', minWidth: '36px' }}>Price</span>
-                  {tradeType === 'Market'
-                    ? <span style={{ flex: 1, textAlign: 'right', fontSize: '13px', color: 'var(--text-secondary)' }}>Market Price</span>
-                    : <input type="number" value={priceInput} onChange={e => setPriceInput(e.target.value)} placeholder="0.00"
-                        style={{ flex: 1, background: 'none', border: 'none', outline: 'none', textAlign: 'right', color: 'var(--text-primary)', fontSize: '13px', fontWeight: '600' }} />
-                  }
-                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)', flexShrink: 0 }}>USDT</span>
+              {/* Grid split: 60% Form, 40% Order Book */}
+              <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '14px', alignItems: 'start', width: '100%' }}>
+                
+                {/* Form (60%) */}
+                <div style={{ overflow: 'hidden' }}>
+                  {mobileTradeSide === 'BUY' ? renderBuyForm(true) : renderSellForm(true)}
                 </div>
 
-                {/* Amount — always coin qty for sell */}
-                <div style={{ backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', padding: '10px 14px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '13px', color: 'var(--text-secondary)', minWidth: '46px' }}>Amount</span>
-                  <input type="number" value={sellAmountInput} onChange={e => setSellAmountInput(e.target.value)} placeholder="0.00"
-                    style={{ flex: 1, background: 'none', border: 'none', outline: 'none', textAlign: 'right', color: 'var(--text-primary)', fontSize: '13px', fontWeight: '600' }} />
-                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)', flexShrink: 0, cursor: 'pointer' }}>{baseAsset} ▾</span>
+                {/* Compact Order Book (40%) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', height: '100%', justifyContent: 'space-between', overflow: 'hidden' }}>
+                  
+                  {/* Asks (Red) */}
+                  <div style={{ display: 'flex', flexDirection: 'column-reverse', gap: '4px' }}>
+                    {orderBook.asks?.slice(0, 5).map((ask, idx) => (
+                      <div
+                        key={`mob-ask-${idx}`}
+                        onClick={() => setPriceInput(ask.price?.toFixed(2))}
+                        style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', cursor: 'pointer', padding: '2px 4px', borderRadius: '3px', transition: 'background-color 0.1s' }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        <span style={{ color: 'var(--danger)', fontWeight: '500' }}>{ask.price?.toFixed(2)}</span>
+                        <span style={{ color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{ask.amount?.toFixed(3)}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Spread Price & Conversion */}
+                  <div style={{
+                    borderTop: '1px solid var(--border-color)',
+                    borderBottom: '1px solid var(--border-color)',
+                    padding: '6px 0',
+                    margin: '6px 0',
+                    textAlign: 'center',
+                  }}>
+                    <div style={{
+                      fontSize: '13px',
+                      fontWeight: 'bold',
+                      color: ticker.change >= 0 ? 'var(--success)' : 'var(--danger)',
+                    }}>
+                      {ticker.price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                    {currency !== 'USD' && (
+                      <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                        ≈ {fmt(ticker.price)}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Bids (Green) */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {orderBook.bids?.slice(0, 5).map((bid, idx) => (
+                      <div
+                        key={`mob-bid-${idx}`}
+                        onClick={() => setPriceInput(bid.price?.toFixed(2))}
+                        style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', cursor: 'pointer', padding: '2px 4px', borderRadius: '3px', transition: 'background-color 0.1s' }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        <span style={{ color: 'var(--success)', fontWeight: '500' }}>{bid.price?.toFixed(2)}</span>
+                        <span style={{ color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{bid.amount?.toFixed(3)}</span>
+                      </div>
+                    ))}
+                  </div>
+
                 </div>
 
-                {/* Slider — sets percentage of available base coin */}
-                <BinanceSlider value={sellPct} onChange={v => {
-                  setSellPct(v);
-                  const coinBal = wallets[baseAsset] || 0;
-                  setSellAmountInput(((v / 100) * coinBal).toFixed(6));
-                }} color="#f6465d" />
-
-                <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                  <input type="checkbox" style={{ accentColor: '#f0b90b', width: '13px', height: '13px', flexShrink: 0 }} />
-                  Slippage Tolerance
-                </label>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', borderTop: '1px solid var(--border-color)', paddingTop: '8px' }}>
-                  {/* Calculated USDT you'll receive */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>Total</span>
-                    <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                      ≈ {((parseFloat(sellAmountInput) || 0) * (tradeType === 'Market' ? ticker.price : (parseFloat(priceInput) || ticker.price))).toFixed(2)} USDT
-                    </span>
-                  </div>
-
-                  {/* Available balance — clickable to fill 100% */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>Avbl</span>
-                    <span
-                      style={{ color: 'var(--primary)', cursor: 'pointer', fontFamily: 'monospace' }}
-                      onClick={() => { setSellAmountInput((wallets[baseAsset] || 0).toFixed(6)); setSellPct(100); }}
-                    >
-                      {(wallets[baseAsset] || 0).toFixed(6)} {baseAsset}
-                    </span>
-                  </div>
-
-                  {/* Max Sell in USDT */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                    <span style={{ color: 'var(--text-secondary)', textDecoration: 'underline dotted', cursor: 'pointer' }}>Max Sell</span>
-                    <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                      ≈ {((wallets[baseAsset] || 0) * (tradeType === 'Market' ? ticker.price : (parseFloat(priceInput) || ticker.price))).toFixed(2)} USDT
-                    </span>
-                  </div>
-
-                  {/* Fee */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                    <span style={{ color: 'var(--text-secondary)', textDecoration: 'underline dotted', cursor: 'pointer' }}>Est. Fee</span>
-                    <span style={{ color: 'var(--text-secondary)' }}>0.1%</span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => handleOrderSubmit('SELL')} disabled={submitting}
-                  style={{ backgroundColor: '#f6465d', border: 'none', color: '#fff', padding: '13px', borderRadius: '8px', fontWeight: '700', fontSize: '15px', cursor: submitting ? 'not-allowed' : 'pointer', width: '100%', transition: 'background 0.15s', letterSpacing: '0.3px' }}
-                  onMouseEnter={e => { if (!submitting) e.currentTarget.style.backgroundColor = '#d63850'; }}
-                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#f6465d'; }}
-                >
-                  {submitting ? 'Placing...' : `Sell ${baseAsset}`}
-                </button>
               </div>
 
             </div>

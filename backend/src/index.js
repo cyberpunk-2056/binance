@@ -25,9 +25,11 @@ getDb();
 const app = express();
 const server = http.createServer(app);
 
+const frontendOrigin = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: frontendOrigin,
     methods: ['GET', 'POST'],
     credentials: true
   }
@@ -39,7 +41,7 @@ app.set('io', io);
 // Middleware
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: frontendOrigin,
   credentials: true
 }));
 app.use(morgan('dev'));

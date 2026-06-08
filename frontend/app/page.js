@@ -441,11 +441,11 @@ export default function Home() {
           Experience the ultimate simulated cryptocurrency trading terminal. Real-time TradingView charts, instant spot orders, P2P Escrow desk, and detailed portfolios.
         </p>
 
-        <div style={{ display: 'flex', gap: '16px', marginBottom: '60px' }}>
-          <Link href="/register" className="btn-primary" style={{ padding: '12px 32px', fontSize: '16px', textDecoration: 'none', borderRadius: '4px' }}>
+        <div style={{ display: 'flex', gap: '16px', marginBottom: '60px', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <Link href="/register" className="btn-primary" style={{ padding: '12px 32px', fontSize: '16px', textDecoration: 'none', borderRadius: '4px', whiteSpace: 'nowrap' }}>
             Get Started
           </Link>
-          <Link href="/trade/BTCUSDT" className="btn-secondary" style={{ padding: '12px 32px', fontSize: '16px', textDecoration: 'none', borderRadius: '4px' }}>
+          <Link href="/trade/BTCUSDT" className="btn-secondary" style={{ padding: '12px 32px', fontSize: '16px', textDecoration: 'none', borderRadius: '4px', whiteSpace: 'nowrap' }}>
             Trade Now
           </Link>
         </div>

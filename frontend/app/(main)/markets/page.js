@@ -539,7 +539,7 @@ export default function Markets() {
         )}
 
         {/* Main Table */}
-        <div style={{
+        <div className="desktop-only" style={{
           backgroundColor: 'var(--bg-secondary)',
           border: '1px solid var(--border-color)',
           borderRadius: '8px',
@@ -702,6 +702,72 @@ export default function Markets() {
             </div>
           )}
         </div>
+
+        {/* Mobile View: Market Cards */}
+        {!loading && pageTickers.length > 0 && (
+          <div className="mobile-only" style={{ flexDirection: 'column', gap: '10px', width: '100%', marginBottom: '20px' }}>
+            {pageTickers.map((coin) => {
+              const coinPrice = coin.price || 0;
+              const changePercent = getAdjustedChange(coin);
+              const isPositive = changePercent >= 0;
+              return (
+                <Link
+                  href={`/trade/${coin.symbol}`}
+                  key={`mob-${coin.symbol}`}
+                  style={{
+                    backgroundColor: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '12px',
+                    padding: '12px 16px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    textDecoration: 'none',
+                    width: '100%',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <CoinIcon coin={coin.baseAsset} size={24} />
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '14px' }}>{coin.baseAsset}</span>
+                        <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>/USDT</span>
+                      </div>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        Vol {fmtLarge(coin.quoteVolume)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '14px' }}>
+                        ${coinPrice?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </div>
+                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        {fmt(coinPrice, { minDecimals: 2 })}
+                      </div>
+                    </div>
+                    <span style={{
+                      color: isPositive ? 'var(--success)' : 'var(--danger)',
+                      backgroundColor: isPositive ? 'rgba(14, 203, 129, 0.12)' : 'rgba(246, 70, 93, 0.12)',
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      fontWeight: 'bold',
+                      fontSize: '12px',
+                      minWidth: '70px',
+                      textAlign: 'center',
+                      display: 'inline-block'
+                    }}>
+                      {isPositive ? '+' : ''}{changePercent?.toFixed(2)}%
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
 
         {/* Pagination bar */}
         {!loading && totalPages > 1 && (
