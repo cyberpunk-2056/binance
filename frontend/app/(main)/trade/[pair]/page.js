@@ -19,39 +19,76 @@ const MEMES = ['DOGE', 'SHIB', 'PEPE', 'FLOKI', 'BONK', 'WIF', 'BOME', 'MEME', '
 function BinanceSlider({ value, onChange, color }) {
   const pcts = [0, 25, 50, 75, 100];
   return (
-    <div style={{ padding: '4px 0 2px' }}>
-      <div style={{ position: 'relative', height: '4px', marginBottom: '14px' }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', backgroundColor: '#2b2f36', borderRadius: '2px' }} />
-        <div style={{ position: 'absolute', top: 0, left: 0, width: value + '%', height: '4px', backgroundColor: color, borderRadius: '2px', transition: 'width 0.1s' }} />
-        {pcts.map(p => (
+    <div style={{ padding: '8px 0', position: 'relative' }}>
+      <div style={{ position: 'relative', height: '14px', display: 'flex', alignItems: 'center' }}>
+        {/* Track Background */}
+        <div style={{ position: 'absolute', left: 0, right: 0, height: '2px', backgroundColor: '#383f4a', borderRadius: '1px' }} />
+        {/* Track Fill */}
+        <div style={{ position: 'absolute', left: 0, width: value + '%', height: '2px', backgroundColor: color, borderRadius: '1px' }} />
+        
+        {/* Diamonds for all ticks */}
+        {pcts.map(p => {
+          const isFilled = p <= value;
+          return (
+            <div
+              key={p}
+              onClick={() => onChange(p)}
+              style={{
+                position: 'absolute',
+                left: p + '%',
+                top: '50%',
+                width: '8px',
+                height: '8px',
+                backgroundColor: isFilled ? color : '#1e2026',
+                border: `1.5px solid ${isFilled ? color : '#474f59'}`,
+                transform: 'translate(-50%, -50%) rotate(45deg)',
+                cursor: 'pointer',
+                zIndex: 2,
+                transition: 'all 0.15s',
+              }}
+            />
+          );
+        })}
+
+        {/* Floating handle if value is custom (not one of the main ticks) */}
+        {!pcts.includes(value) && (
           <div
-            key={p}
-            onClick={() => onChange(p)}
             style={{
-              position: 'absolute', top: '50%', left: p + '%',
-              width: p === value ? '10px' : '8px',
-              height: p === value ? '10px' : '8px',
-              borderRadius: p === value ? '2px' : '50%',
-              backgroundColor: p <= value ? color : '#2b2f36',
-              border: p === value ? '2px solid ' + color : '1.5px solid #3a3f4b',
-              cursor: 'pointer', transition: 'all 0.15s',
-              transform: p === value ? 'translate(-50%, -50%) rotate(45deg)' : 'translate(-50%, -50%)',
-              zIndex: 2,
+              position: 'absolute',
+              left: value + '%',
+              top: '50%',
+              width: '10px',
+              height: '10px',
+              backgroundColor: color,
+              border: '1.5px solid #fff',
+              transform: 'translate(-50%, -50%) rotate(45deg)',
+              zIndex: 3,
+              pointerEvents: 'none',
             }}
           />
-        ))}
-        <input type="range" min="0" max="100" step="1" value={value}
+        )}
+
+        {/* Range Input overlay for interactions */}
+        <input
+          type="range"
+          min="0"
+          max="100"
+          step="1"
+          value={value}
           onChange={e => onChange(Number(e.target.value))}
-          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', margin: 0, padding: 0 }}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            opacity: 0,
+            cursor: 'pointer',
+            margin: 0,
+            padding: 0,
+            zIndex: 4,
+          }}
         />
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-        {pcts.map(p => (
-          <span key={p} onClick={() => onChange(p)} style={{
-            fontSize: '11px', color: p <= value ? color : 'var(--text-secondary)',
-            cursor: 'pointer', userSelect: 'none', fontWeight: p === value ? '700' : '400', transition: 'color 0.15s',
-          }}>{p}%</span>
-        ))}
       </div>
     </div>
   );
@@ -398,30 +435,109 @@ export default function Trade({ params }) {
       <div style={{ backgroundColor: 'var(--bg-secondary)', padding: isMobile ? '8px 0' : '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
 
         {/* Price field */}
-        <div style={{ backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', padding: '10px 14px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '13px', color: 'var(--text-secondary)', minWidth: '36px' }}>Price</span>
-          {tradeType === 'Market'
-            ? <span style={{ flex: 1, textAlign: 'right', fontSize: '13px', color: 'var(--text-secondary)' }}>Market Price</span>
-            : <input type="number" value={priceInput} onChange={e => setPriceInput(e.target.value)} placeholder="0.00"
-                style={{ flex: 1, background: 'none', border: 'none', outline: 'none', textAlign: 'right', color: 'var(--text-primary)', fontSize: '13px', fontWeight: '600' }} />
-          }
-          <span style={{ fontSize: '12px', color: 'var(--text-secondary)', flexShrink: 0 }}>USDT</span>
+        <div style={{
+          backgroundColor: '#2b3139',
+          borderRadius: '4px',
+          padding: '10px 14px',
+          border: '1px solid #474f59',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '8px'
+        }}>
+          <span style={{ fontSize: '14px', color: '#848e9c', minWidth: '40px' }}>Price</span>
+          {tradeType === 'Market' ? (
+            <span style={{ fontSize: '14px', color: '#5e6673', fontWeight: '500' }}>Market Price</span>
+          ) : (
+            <input
+              type="number"
+              value={priceInput}
+              onChange={e => setPriceInput(e.target.value)}
+              placeholder="0.00"
+              style={{
+                flex: 1,
+                background: 'none',
+                border: 'none',
+                outline: 'none',
+                textAlign: 'right',
+                color: '#eaecef',
+                fontSize: '14px',
+                fontWeight: '600',
+                padding: 0
+              }}
+            />
+          )}
+          {!isMobile && tradeType !== 'Market' && (
+            <span style={{ fontSize: '14px', color: '#848e9c', marginLeft: '4px' }}>USDT</span>
+          )}
         </div>
 
         {/* Amount (Limit: coin qty) OR Total (Market: USDT) */}
         {tradeType !== 'Market' ? (
-          <div style={{ backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', padding: '10px 14px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '13px', color: 'var(--text-secondary)', minWidth: '46px' }}>Amount</span>
-            <input type="number" value={buyAmountInput} onChange={e => setBuyAmountInput(e.target.value)} placeholder="0.00"
-              style={{ flex: 1, background: 'none', border: 'none', outline: 'none', textAlign: 'right', color: 'var(--text-primary)', fontSize: '13px', fontWeight: '600' }} />
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', flexShrink: 0 }}>{baseAsset}</span>
+          <div style={{
+            backgroundColor: '#2b3139',
+            borderRadius: '4px',
+            padding: '10px 14px',
+            border: '1px solid #474f59',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '8px'
+          }}>
+            <span style={{ fontSize: '14px', color: '#848e9c', minWidth: '40px' }}>Amount</span>
+            <input
+              type="number"
+              value={buyAmountInput}
+              onChange={e => setBuyAmountInput(e.target.value)}
+              placeholder="0.00"
+              style={{
+                flex: 1,
+                background: 'none',
+                border: 'none',
+                outline: 'none',
+                textAlign: 'right',
+                color: '#eaecef',
+                fontSize: '14px',
+                fontWeight: '600',
+                padding: 0
+              }}
+            />
+            <span style={{ fontSize: '14px', color: '#eaecef', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', userSelect: 'none' }}>
+              {baseAsset} ▾
+            </span>
           </div>
         ) : (
-          <div style={{ backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', padding: '10px 14px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '13px', color: 'var(--text-secondary)', minWidth: '36px' }}>Total</span>
-            <input type="number" value={buyTotalInput} onChange={e => setBuyTotalInput(e.target.value)} placeholder="Min. 5 USDT"
-              style={{ flex: 1, background: 'none', border: 'none', outline: 'none', textAlign: 'right', color: 'var(--text-primary)', fontSize: '13px', fontWeight: '600' }} />
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', flexShrink: 0, cursor: 'pointer' }}>USDT ▾</span>
+          <div style={{
+            backgroundColor: '#2b3139',
+            borderRadius: '4px',
+            padding: '10px 14px',
+            border: '1px solid #474f59',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '8px'
+          }}>
+            <span style={{ fontSize: '14px', color: '#848e9c', minWidth: '40px' }}>Total</span>
+            <input
+              type="number"
+              value={buyTotalInput}
+              onChange={e => setBuyTotalInput(e.target.value)}
+              placeholder="Minimum 5"
+              style={{
+                flex: 1,
+                background: 'none',
+                border: 'none',
+                outline: 'none',
+                textAlign: 'right',
+                color: '#eaecef',
+                fontSize: '14px',
+                fontWeight: '600',
+                padding: 0
+              }}
+            />
+            <span style={{ fontSize: '14px', color: '#eaecef', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', userSelect: 'none' }}>
+              USDT ▾
+            </span>
           </div>
         )}
 
@@ -437,66 +553,86 @@ export default function Trade({ params }) {
           }
         }} color="#0ecb81" />
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-          <input type="checkbox" style={{ accentColor: '#f0b90b', width: '13px', height: '13px', flexShrink: 0 }} />
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#848e9c', cursor: 'pointer', userSelect: 'none', marginTop: '4px' }}>
+          <input type="checkbox" style={{
+            accentColor: '#f0b90b',
+            width: '14px',
+            height: '14px',
+            cursor: 'pointer',
+          }} />
           Slippage Tolerance
         </label>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', borderTop: '1px solid var(--border-color)', paddingTop: '8px' }}>
-          {/* Calculated total (Limit) or estimated coin amount (Market) */}
-          {tradeType !== 'Market' ? (
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Total</span>
-              <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                ≈ {((parseFloat(buyAmountInput) || 0) * (parseFloat(priceInput) || ticker.price)).toFixed(2)} USDT
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
+          {/* Available balance line */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
+            <span style={{ color: '#848e9c', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px', userSelect: 'none' }}>
+              Avbl <span style={{ fontSize: '8px' }}>▼</span>
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span
+                style={{ color: '#eaecef', cursor: 'pointer', fontFamily: 'monospace', fontWeight: '500' }}
+                onClick={() => {
+                  const usdt = wallets['USDT'] || 0;
+                  if (tradeType === 'Market') {
+                    setBuyTotalInput(usdt.toFixed(2)); setBuyPct(100);
+                  } else {
+                    const lp = parseFloat(priceInput) || ticker.price;
+                    if (lp > 0) { setBuyAmountInput((usdt / lp).toFixed(6)); setBuyPct(100); }
+                  }
+                }}
+              >
+                {(wallets['USDT'] || 0).toFixed(8)} USDT
               </span>
+              <div style={{
+                width: '14px',
+                height: '14px',
+                borderRadius: '50%',
+                backgroundColor: '#f0b90b',
+                color: '#1e2026',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '11px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}>
+                +
+              </div>
             </div>
-          ) : (
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>≈ You receive</span>
-              <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                {ticker.price > 0 ? ((parseFloat(buyTotalInput) || 0) / ticker.price).toFixed(6) : '0'} {baseAsset}
-              </span>
-            </div>
-          )}
+          </div>
 
-          {/* Available balance — clickable to fill 100% */}
+          {/* Max Buy line */}
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-            <span style={{ color: 'var(--text-secondary)' }}>Avbl</span>
-            <span
-              style={{ color: 'var(--primary)', cursor: 'pointer', fontFamily: 'monospace' }}
-              onClick={() => {
-                const usdt = wallets['USDT'] || 0;
-                if (tradeType === 'Market') {
-                  setBuyTotalInput(usdt.toFixed(2)); setBuyPct(100);
-                } else {
-                  const lp = parseFloat(priceInput) || ticker.price;
-                  if (lp > 0) { setBuyAmountInput((usdt / lp).toFixed(6)); setBuyPct(100); }
-                }
-              }}
-            >
-              {(wallets['USDT'] || 0).toFixed(2)} USDT
+            <span style={{ color: '#848e9c', cursor: 'pointer' }}>Max Buy</span>
+            <span style={{ color: '#eaecef', fontFamily: 'monospace', fontWeight: '500' }}>
+              {ticker.price > 0 ? ((wallets['USDT'] || 0) / ticker.price).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 }) : '0'} {baseAsset}
             </span>
           </div>
 
-          {/* Max Buy */}
+          {/* Est. Fee line */}
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-            <span style={{ color: 'var(--text-secondary)', textDecoration: 'underline dotted', cursor: 'pointer' }}>Max Buy</span>
-            <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-              {ticker.price > 0 ? ((wallets['USDT'] || 0) / ticker.price).toFixed(6) : '0'} {baseAsset}
-            </span>
-          </div>
-
-          {/* Fee */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-            <span style={{ color: 'var(--text-secondary)', textDecoration: 'underline dotted', cursor: 'pointer' }}>Est. Fee</span>
-            <span style={{ color: 'var(--text-secondary)' }}>0.1%</span>
+            <span style={{ color: '#848e9c', borderBottom: '1px dotted #848e9c', cursor: 'pointer', paddingBottom: '1px' }}>Est. Fee</span>
+            <span style={{ color: '#eaecef', fontFamily: 'monospace', fontWeight: '500' }}>0.1%</span>
           </div>
         </div>
 
         <button
           onClick={() => handleOrderSubmit('BUY')} disabled={submitting}
-          style={{ backgroundColor: '#0ecb81', border: 'none', color: '#fff', padding: '13px', borderRadius: '8px', fontWeight: '700', fontSize: '15px', cursor: submitting ? 'not-allowed' : 'pointer', width: '100%', transition: 'background 0.15s', letterSpacing: '0.3px' }}
+          style={{
+            backgroundColor: '#0ecb81',
+            border: 'none',
+            color: '#fff',
+            padding: '12px',
+            borderRadius: '4px',
+            fontWeight: '700',
+            fontSize: '14px',
+            cursor: submitting ? 'not-allowed' : 'pointer',
+            width: '100%',
+            transition: 'background 0.15s',
+            marginTop: '8px',
+          }}
           onMouseEnter={e => { if (!submitting) e.currentTarget.style.backgroundColor = '#0db572'; }}
           onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0ecb81'; }}
         >
@@ -511,22 +647,75 @@ export default function Trade({ params }) {
       <div style={{ backgroundColor: 'var(--bg-secondary)', padding: isMobile ? '8px 0' : '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
 
         {/* Price field */}
-        <div style={{ backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', padding: '10px 14px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '13px', color: 'var(--text-secondary)', minWidth: '36px' }}>Price</span>
-          {tradeType === 'Market'
-            ? <span style={{ flex: 1, textAlign: 'right', fontSize: '13px', color: 'var(--text-secondary)' }}>Market Price</span>
-            : <input type="number" value={priceInput} onChange={e => setPriceInput(e.target.value)} placeholder="0.00"
-                style={{ flex: 1, background: 'none', border: 'none', outline: 'none', textAlign: 'right', color: 'var(--text-primary)', fontSize: '13px', fontWeight: '600' }} />
-          }
-          <span style={{ fontSize: '12px', color: 'var(--text-secondary)', flexShrink: 0 }}>USDT</span>
+        <div style={{
+          backgroundColor: '#2b3139',
+          borderRadius: '4px',
+          padding: '10px 14px',
+          border: '1px solid #474f59',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '8px'
+        }}>
+          <span style={{ fontSize: '14px', color: '#848e9c', minWidth: '40px' }}>Price</span>
+          {tradeType === 'Market' ? (
+            <span style={{ fontSize: '14px', color: '#5e6673', fontWeight: '500' }}>Market Price</span>
+          ) : (
+            <input
+              type="number"
+              value={priceInput}
+              onChange={e => setPriceInput(e.target.value)}
+              placeholder="0.00"
+              style={{
+                flex: 1,
+                background: 'none',
+                border: 'none',
+                outline: 'none',
+                textAlign: 'right',
+                color: '#eaecef',
+                fontSize: '14px',
+                fontWeight: '600',
+                padding: 0
+              }}
+            />
+          )}
+          {!isMobile && tradeType !== 'Market' && (
+            <span style={{ fontSize: '14px', color: '#848e9c', marginLeft: '4px' }}>USDT</span>
+          )}
         </div>
 
         {/* Amount — always coin qty for sell */}
-        <div style={{ backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', padding: '10px 14px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '13px', color: 'var(--text-secondary)', minWidth: '46px' }}>Amount</span>
-          <input type="number" value={sellAmountInput} onChange={e => setSellAmountInput(e.target.value)} placeholder="0.00"
-            style={{ flex: 1, background: 'none', border: 'none', outline: 'none', textAlign: 'right', color: 'var(--text-primary)', fontSize: '13px', fontWeight: '600' }} />
-          <span style={{ fontSize: '12px', color: 'var(--text-secondary)', flexShrink: 0, cursor: 'pointer' }}>{baseAsset} ▾</span>
+        <div style={{
+          backgroundColor: '#2b3139',
+          borderRadius: '4px',
+          padding: '10px 14px',
+          border: '1px solid #474f59',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '8px'
+        }}>
+          <span style={{ fontSize: '14px', color: '#848e9c', minWidth: '40px' }}>Amount</span>
+          <input
+            type="number"
+            value={sellAmountInput}
+            onChange={e => setSellAmountInput(e.target.value)}
+            placeholder="0.00"
+            style={{
+              flex: 1,
+              background: 'none',
+              border: 'none',
+              outline: 'none',
+              textAlign: 'right',
+              color: '#eaecef',
+              fontSize: '14px',
+              fontWeight: '600',
+              padding: 0
+            }}
+          />
+          <span style={{ fontSize: '14px', color: '#eaecef', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', userSelect: 'none' }}>
+            {baseAsset} ▾
+          </span>
         </div>
 
         {/* Slider — sets percentage of available base coin */}
@@ -536,49 +725,78 @@ export default function Trade({ params }) {
           setSellAmountInput(((v / 100) * coinBal).toFixed(6));
         }} color="#f6465d" />
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-          <input type="checkbox" style={{ accentColor: '#f0b90b', width: '13px', height: '13px', flexShrink: 0 }} />
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#848e9c', cursor: 'pointer', userSelect: 'none', marginTop: '4px' }}>
+          <input type="checkbox" style={{
+            accentColor: '#f0b90b',
+            width: '14px',
+            height: '14px',
+            cursor: 'pointer',
+          }} />
           Slippage Tolerance
         </label>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', borderTop: '1px solid var(--border-color)', paddingTop: '8px' }}>
-          {/* Calculated USDT you'll receive */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
+          {/* Available balance line */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
+            <span style={{ color: '#848e9c', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px', userSelect: 'none' }}>
+              Avbl <span style={{ fontSize: '8px' }}>▼</span>
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span
+                style={{ color: '#eaecef', cursor: 'pointer', fontFamily: 'monospace', fontWeight: '500' }}
+                onClick={() => { setSellAmountInput((wallets[baseAsset] || 0).toFixed(6)); setSellPct(100); }}
+              >
+                {(wallets[baseAsset] || 0).toFixed(8)} {baseAsset}
+              </span>
+              <div style={{
+                width: '14px',
+                height: '14px',
+                borderRadius: '50%',
+                backgroundColor: '#f0b90b',
+                color: '#1e2026',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '11px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}>
+                +
+              </div>
+            </div>
+          </div>
+
+          {/* Max Sell line */}
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-            <span style={{ color: 'var(--text-secondary)' }}>Total</span>
-            <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-              ≈ {((parseFloat(sellAmountInput) || 0) * (tradeType === 'Market' ? ticker.price : (parseFloat(priceInput) || ticker.price))).toFixed(2)} USDT
+            <span style={{ color: '#848e9c', cursor: 'pointer' }}>Max Sell</span>
+            <span style={{ color: '#eaecef', fontFamily: 'monospace', fontWeight: '500' }}>
+              ≈ {((wallets[baseAsset] || 0) * (tradeType === 'Market' ? ticker.price : (parseFloat(priceInput) || ticker.price))).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT
             </span>
           </div>
 
-          {/* Available balance — clickable to fill 100% */}
+          {/* Est. Fee line */}
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-            <span style={{ color: 'var(--text-secondary)' }}>Avbl</span>
-            <span
-              style={{ color: 'var(--primary)', cursor: 'pointer', fontFamily: 'monospace' }}
-              onClick={() => { setSellAmountInput((wallets[baseAsset] || 0).toFixed(6)); setSellPct(100); }}
-            >
-              {(wallets[baseAsset] || 0).toFixed(6)} {baseAsset}
-            </span>
-          </div>
-
-          {/* Max Sell in USDT */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-            <span style={{ color: 'var(--text-secondary)', textDecoration: 'underline dotted', cursor: 'pointer' }}>Max Sell</span>
-            <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-              ≈ {((wallets[baseAsset] || 0) * (tradeType === 'Market' ? ticker.price : (parseFloat(priceInput) || ticker.price))).toFixed(2)} USDT
-            </span>
-          </div>
-
-          {/* Fee */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-            <span style={{ color: 'var(--text-secondary)', textDecoration: 'underline dotted', cursor: 'pointer' }}>Est. Fee</span>
-            <span style={{ color: 'var(--text-secondary)' }}>0.1%</span>
+            <span style={{ color: '#848e9c', borderBottom: '1px dotted #848e9c', cursor: 'pointer', paddingBottom: '1px' }}>Est. Fee</span>
+            <span style={{ color: '#eaecef', fontFamily: 'monospace', fontWeight: '500' }}>0.1%</span>
           </div>
         </div>
 
         <button
           onClick={() => handleOrderSubmit('SELL')} disabled={submitting}
-          style={{ backgroundColor: '#f6465d', border: 'none', color: '#fff', padding: '13px', borderRadius: '8px', fontWeight: '700', fontSize: '15px', cursor: submitting ? 'not-allowed' : 'pointer', width: '100%', transition: 'background 0.15s', letterSpacing: '0.3px' }}
+          style={{
+            backgroundColor: '#f6465d',
+            border: 'none',
+            color: '#fff',
+            padding: '12px',
+            borderRadius: '4px',
+            fontWeight: '700',
+            fontSize: '14px',
+            cursor: submitting ? 'not-allowed' : 'pointer',
+            width: '100%',
+            transition: 'background 0.15s',
+            marginTop: '8px',
+          }}
           onMouseEnter={e => { if (!submitting) e.currentTarget.style.backgroundColor = '#d63850'; }}
           onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#f6465d'; }}
         >
@@ -750,12 +968,16 @@ export default function Trade({ params }) {
                   const isAct = tradeMode === mode;
                   return (
                     <button key={mode} onClick={() => setTradeMode(mode)} style={{
-                      background: 'none', border: 'none',
-                      borderBottom: isAct ? '2px solid var(--primary)' : '2px solid transparent',
-                      color: isAct ? 'var(--text-primary)' : 'var(--text-secondary)',
-                      fontWeight: isAct ? '700' : '400',
-                      fontSize: '13px', padding: '12px 12px 10px', cursor: 'pointer',
-                      transition: 'all 0.15s', whiteSpace: 'nowrap',
+                      background: 'none',
+                      border: 'none',
+                      borderBottom: isAct ? '2.5px solid #f0b90b' : '2.5px solid transparent',
+                      color: isAct ? '#eaecef' : '#848e9c',
+                      fontWeight: isAct ? '700' : '500',
+                      fontSize: '14px',
+                      padding: '14px 12px 11px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      whiteSpace: 'nowrap',
                     }}>
                       {mode}
                     </button>
@@ -763,44 +985,116 @@ export default function Trade({ params }) {
                 })}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {/* Yellow badge with serrated badge percent SVG */}
                 <div style={{
-                  display: 'flex', alignItems: 'center', gap: '5px',
-                  border: '1px solid #f0b90b', borderRadius: '20px',
-                  padding: '3px 8px', fontSize: '11px', color: '#f0b90b', fontWeight: '600', whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  border: '1px solid #f0b90b',
+                  borderRadius: '4px',
+                  padding: '4px 8px',
+                  fontSize: '11px',
+                  color: '#f0b90b',
+                  fontWeight: '600',
+                  whiteSpace: 'nowrap',
+                  backgroundColor: 'rgba(240, 185, 11, 0.06)',
                 }}>
-                  ⚙ 0% fee on this pair
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f0b90b" strokeWidth="2.5" style={{ flexShrink: 0 }}>
+                    <path d="M12 2l1.5 1.5L15.5 3l1 2 2 .5.5 2 2 1v2.5l-1 2 1 2v2.5l-2 1-.5 2-2 .5-1 2-2-1-1.5 1.5L12 22l-1.5-1.5L8.5 21l-1-2-2-.5-.5-2-2-1v-2.5l1-2-1-2v-2.5l2-1 .5-2 2-.5 1-2 2 1 1.5-1.5z" fill="rgba(240, 185, 11, 0.1)"/>
+                    <path d="M15 9l-6 6M9.5 9.5h.01M14.5 14.5h.01" stroke="#f0b90b" strokeWidth="3" strokeLinecap="round"/>
+                  </svg>
+                  0% trading fee on this pair
                 </div>
-                <span style={{ fontSize: '11px', color: 'var(--text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap' }}>% Fee Level</span>
+                <span style={{
+                  fontSize: '12px',
+                  color: '#848e9c',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <line x1="19" y1="5" x2="5" y2="19" />
+                    <circle cx="6.5" cy="6.5" r="2.5" />
+                    <circle cx="17.5" cy="17.5" r="2.5" />
+                  </svg>
+                  Fee Level
+                </span>
               </div>
             </div>
 
             {/* Row 2: Limit / Market / Stop Limit */}
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '6px 16px', borderBottom: '1px solid var(--border-color)',
+              padding: '8px 16px', borderBottom: '1px solid var(--border-color)',
             }}>
-              <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                 {['Limit', 'Market', 'Stop Limit'].map(type => {
                   const isAct = tradeType === type;
                   return (
                     <button key={type} onClick={() => setTradeType(type)} style={{
-                      background: 'none', border: 'none',
-                      color: isAct ? 'var(--text-primary)' : 'var(--text-secondary)',
-                      fontWeight: isAct ? '700' : '400',
-                      fontSize: '13px', padding: '4px 8px', cursor: 'pointer',
-                      borderRadius: '4px',
-                      backgroundColor: isAct ? 'var(--bg-tertiary)' : 'transparent',
+                      background: 'none',
+                      border: 'none',
+                      color: isAct ? '#eaecef' : '#848e9c',
+                      fontWeight: isAct ? '700' : '500',
+                      fontSize: '13px',
+                      padding: '4px 0',
+                      cursor: 'pointer',
                       transition: 'all 0.15s',
                     }}>
                       {type}{type === 'Stop Limit' ? ' ▾' : ''}
                     </button>
                   );
                 })}
-                <span style={{ fontSize: '14px', color: 'var(--text-secondary)', marginLeft: '4px', cursor: 'pointer' }}>ⓘ</span>
+                {/* Clean Info Icon */}
+                <span style={{
+                  fontSize: '12px',
+                  color: '#848e9c',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '14px',
+                  height: '14px',
+                  borderRadius: '50%',
+                  border: '1px solid #848e9c',
+                  fontWeight: '600',
+                  lineHeight: 1
+                }}>i</span>
               </div>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap' }}>↻ Recurring</span>
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap' }}>Buy with USD</span>
+              <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+                <span style={{
+                  fontSize: '12px',
+                  color: '#848e9c',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <polyline points="23 4 23 10 17 10" />
+                    <polyline points="1 20 1 14 7 14" />
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                  </svg>
+                  Recurring
+                </span>
+                <span style={{
+                  fontSize: '12px',
+                  color: '#848e9c',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <rect x="2" y="4" width="20" height="16" rx="2" ry="2" />
+                    <line x1="2" y1="10" x2="22" y2="10" />
+                  </svg>
+                  Buy with EUR
+                </span>
               </div>
             </div>
 
