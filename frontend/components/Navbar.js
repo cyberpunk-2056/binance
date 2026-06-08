@@ -211,7 +211,7 @@ export default function Navbar() {
                   Admin Panel
                 </Link>
               )}
-              <Link href="/dashboard" style={{ color: pathname === '/dashboard' ? 'var(--primary)' : 'var(--text-primary)', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
+              <Link href="/" style={{ color: pathname === '/' ? 'var(--primary)' : 'var(--text-primary)', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
                 Dashboard
               </Link>
               <Link href="/wallet" style={{ color: pathname === '/wallet' ? 'var(--primary)' : 'var(--text-primary)', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
@@ -377,7 +377,7 @@ export default function Navbar() {
               {user.role === 'ADMIN' && (
                 <Link href="/admin" onClick={() => setMobileOpen(false)} style={{ color: 'var(--warning)', textDecoration: 'none', fontSize: '14px', fontWeight: '600', border: '1px solid var(--warning)', padding: '6px 12px', borderRadius: '4px', backgroundColor: 'rgba(240, 185, 11, 0.1)', textAlign: 'center' }}>Admin Panel</Link>
               )}
-              <Link href="/dashboard" onClick={() => setMobileOpen(false)} style={{ color: pathname === '/dashboard' ? 'var(--primary)' : 'var(--text-primary)', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Dashboard</Link>
+              <Link href="/" onClick={() => setMobileOpen(false)} style={{ color: pathname === '/' ? 'var(--primary)' : 'var(--text-primary)', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Dashboard</Link>
               <Link href="/wallet" onClick={() => setMobileOpen(false)} style={{ color: pathname === '/wallet' ? 'var(--primary)' : 'var(--text-primary)', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Wallet</Link>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '4px 0' }}>
                 <div style={{ height: '32px', width: '32px', borderRadius: '50%', backgroundColor: 'var(--bg-tertiary)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '14px' }}>

@@ -1,4 +1,13 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../../.env') });
+
+if (!process.env.JWT_SECRET) {
+  console.error('\n❌ ERROR: JWT_SECRET environment variable is not defined!');
+  console.error('This usually means the .env file was not found or is empty.');
+  console.error(`Attempted to load .env from: ${path.join(__dirname, '../../.env')}\n`);
+  process.exit(1);
+}
+
 const bcrypt = require('bcryptjs');
 const { getDb, generateId } = require('./db');
 
