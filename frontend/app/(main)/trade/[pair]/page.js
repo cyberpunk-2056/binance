@@ -243,17 +243,33 @@ export default function Trade({ params }) {
   const maxAskTotal = asksWithTotals.length > 0 ? asksWithTotals[asksWithTotals.length - 1]?.total : 1;
   const maxBidTotal = bidsWithTotals.length > 0 ? bidsWithTotals[bidsWithTotals.length - 1]?.total : 1;
 
+  // Page-level viewport scroll lock class on mount
+  useEffect(() => {
+    document.body.classList.add('trading-page-active');
+    return () => {
+      document.body.classList.remove('trading-page-active');
+    };
+  }, []);
+
+  // Dynamic document title update
+  useEffect(() => {
+    if (ticker.price) {
+      const formattedPrice = ticker.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      document.title = `${formattedPrice} | ${baseAssetClean}${quoteAsset} | ${baseAssetClean} to ${quoteAsset} - Binance Spot`;
+    }
+  }, [ticker.price, pair, baseAssetClean, quoteAsset]);
+
   // Initial fetch
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
         const [tickerRes, depthRes, tradesRes, watchlistRes] = await Promise.all([
-          api.get(`/markets/${pair}/price`),
+          api.get(`/markets/${pair}/ticker`),
           api.get(`/markets/${pair}/depth`),
           api.get(`/markets/${pair}/trades`),
           api.get('/markets/tickers')
         ]);
-        setTicker(prev => ({ ...prev, price: tickerRes.data.price }));
+        setTicker(tickerRes.data);
         setPriceInput(tickerRes.data.price?.toString() || '');
         setStopPriceInput(tickerRes.data.price?.toString() || '');
         setOrderBook(depthRes.data);
@@ -287,7 +303,7 @@ export default function Trade({ params }) {
       setTicker((prev) => {
         const direction = update.price > prev.price ? 'up' : update.price < prev.price ? 'down' : null;
         if (direction) setActivePriceDirection(direction);
-        return update;
+        return { ...prev, ...update };
       });
       setLiveChartPrice({ price: update.price, time: Date.now() });
       if (Math.random() > 0.5) {
@@ -847,11 +863,11 @@ export default function Trade({ params }) {
   const filteredTradeHistory = filterByPair ? tradeHistory.filter(o => o.pair === pair) : tradeHistory;
 
   return (
-    <div style={{ backgroundColor: 'var(--bg-primary)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ backgroundColor: 'var(--bg-primary)', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <Navbar />
 
       {/* ── Header Stats Bar ── */}
-      <div style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)', padding: '8px 20px', display: 'flex', alignItems: 'center', gap: '32px', overflowX: 'auto' }}>
+      <div style={{ height: '52px', boxSizing: 'border-box', backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)', padding: '0 20px', display: 'flex', alignItems: 'center', gap: '32px', overflowX: 'auto', flexShrink: 0 }}>
 
         {/* Pair Name + Favorite */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
@@ -880,8 +896,8 @@ export default function Trade({ params }) {
 
         {/* 24h Change */}
         <div style={{ flexShrink: 0 }}>
-          <div style={{ fontSize: '14px', fontWeight: '600', color: isPositive ? 'var(--success)' : 'var(--danger)' }}>
-            {isPositive ? '+' : ''}{ticker.change?.toFixed(2)}%
+          <div style={{ fontSize: '13px', fontWeight: '600', color: isPositive ? 'var(--success)' : 'var(--danger)', fontFamily: 'monospace' }}>
+            {isPositive ? '+' : ''}{ticker.priceChange?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {isPositive ? '+' : ''}{ticker.change?.toFixed(2)}%
           </div>
           <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>24h Change</div>
         </div>
@@ -920,12 +936,12 @@ export default function Trade({ params }) {
       </div>
 
       {/* ── Main Trading Grid ── */}
-      <div className="trading-grid">
+      <div className="trading-grid" style={{ flex: 1, display: 'grid', gridTemplateColumns: '320px 1fr 320px', overflow: 'hidden' }}>
 
         {/* ── LEFT COLUMN: Order Book / Trades ── */}
-        <div className="trading-left-col">
+        <div className="trading-left-col" style={{ height: '100%', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border-color)', padding: '6px', overflow: 'hidden', boxSizing: 'border-box', position: 'static' }}>
           {/* Tab toggle */}
-          <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', marginBottom: '10px' }}>
+          <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', marginBottom: '10px', flexShrink: 0 }}>
             {[['book', 'Order Book'], ['trades', 'Trades']].map(([key, label]) => (
               <button key={key} onClick={() => setLeftPanelTab(key)}
                 style={{ flex: 1, padding: '8px 4px', fontSize: '12px', fontWeight: leftPanelTab === key ? '700' : '400', color: leftPanelTab === key ? 'var(--text-primary)' : 'var(--text-secondary)', background: 'none', border: 'none', borderBottom: leftPanelTab === key ? '2px solid var(--primary)' : '2px solid transparent', cursor: 'pointer', transition: 'all 0.15s' }}>
@@ -941,15 +957,15 @@ export default function Trade({ params }) {
         </div>
 
         {/* ── CENTER COLUMN: Chart + Forms ── */}
-        <div className="trading-center-col">
+        <div className="trading-center-col" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflowY: 'auto', backgroundColor: 'var(--bg-primary)', boxSizing: 'border-box' }}>
 
           {/* TradingView Chart */}
-          <div style={{ borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+          <div style={{ flex: 1, minHeight: '280px', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', position: 'relative' }}>
             <TradingViewChart symbol={pair} />
           </div>
 
           {/* Buy/Sell Panel */}
-          <div style={{ backgroundColor: 'var(--bg-secondary)' }}>
+          <div style={{ height: '320px', flexShrink: 0, backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)', overflowY: 'auto' }}>
 
             {/* Row 1: Spot / Cross / Isolated / Grid + Fee badge */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', borderBottom: '1px solid var(--border-color)' }}>
@@ -1076,10 +1092,235 @@ export default function Trade({ params }) {
               </div>
             </div>
           </div>
+
+          {/* ── Bottom Orders Panel ── */}
+          <div style={{ height: '260px', flexShrink: 0, backgroundColor: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+            {/* Tab header */}
+            <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--border-color)', padding: '0 16px', gap: '0', flexShrink: 0, height: '40px' }}>
+              {[
+                { key: 'OPEN', label: 'Open Orders', count: filteredOpenOrders.length },
+                { key: 'HISTORY', label: 'Order History' },
+                { key: 'TRADE', label: 'Trade History' },
+                { key: 'FUNDS', label: 'Funds' },
+              ].map(({ key, label, count }) => {
+                const isTab = bottomTab === key;
+                return (
+                  <button key={key} onClick={() => setBottomTab(key)}
+                    style={{ padding: '10px 16px', fontSize: '13px', fontWeight: isTab ? '600' : '400', color: isTab ? 'var(--text-primary)' : 'var(--text-secondary)', background: 'none', border: 'none', borderBottom: isTab ? '2px solid var(--primary)' : '2px solid transparent', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }}>
+                    {label}
+                    {count > 0 && (
+                      <span style={{ marginLeft: '6px', backgroundColor: 'var(--primary)', color: '#000', borderRadius: '10px', fontSize: '11px', fontWeight: '700', padding: '1px 6px' }}>
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+
+              {/* Filter by pair toggle */}
+              {(bottomTab === 'OPEN' || bottomTab === 'HISTORY' || bottomTab === 'TRADE') && (
+                <label style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#848e9c', cursor: 'pointer', userSelect: 'none' }}>
+                  <input type="checkbox" checked={filterByPair} onChange={e => setFilterByPair(e.target.checked)} style={{ accentColor: '#f0b90b', width: '13px', height: '13px', cursor: 'pointer' }} />
+                  Hide Other Pairs
+                </label>
+              )}
+            </div>
+
+            {/* Tab body */}
+            <div style={{ flex: 1, overflowX: 'auto', overflowY: 'auto' }}>
+
+              {/* Open Orders */}
+              {bottomTab === 'OPEN' && (
+                filteredOpenOrders.length === 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '30px 0', color: 'var(--text-secondary)', fontSize: '13px', gap: '8px' }}>
+                    <svg width="40" height="40" viewBox="0 0 48 48" fill="none" opacity="0.3">
+                      <rect x="8" y="12" width="32" height="4" rx="2" fill="currentColor" />
+                      <rect x="8" y="22" width="24" height="4" rx="2" fill="currentColor" />
+                      <rect x="8" y="32" width="16" height="4" rx="2" fill="currentColor" />
+                    </svg>
+                    No open orders
+                  </div>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border-color)', position: 'sticky', top: 0, backgroundColor: 'var(--bg-secondary)', zIndex: 10 }}>
+                        {['Date', 'Pair', 'Type', 'Side', 'Price', 'Amount', 'Filled', 'Total', 'Action'].map((h, i) => (
+                          <th key={h} style={{ padding: '8px 12px', color: 'var(--text-secondary)', fontWeight: '500', textAlign: i >= 4 ? 'right' : 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredOpenOrders.map((order) => (
+                        <tr key={order.id} style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-primary)', transition: 'background 0.1s' }}
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                          <td style={{ padding: '6px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '11px' }}>{new Date(order.createdAt).toLocaleString()}</td>
+                          <td style={{ padding: '6px 12px', fontWeight: '600' }}>{order.pair}</td>
+                          <td style={{ padding: '6px 12px', color: 'var(--text-secondary)' }}>{order.type}</td>
+                          <td style={{ padding: '6px 12px', fontWeight: '600', color: order.side === 'BUY' ? 'var(--success)' : 'var(--danger)' }}>{order.side}</td>
+                          <td style={{ padding: '6px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{order.price?.toFixed(2)}</td>
+                          <td style={{ padding: '6px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{order.amount?.toFixed(6)}</td>
+                          <td style={{ padding: '6px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{order.filled?.toFixed(6) || '0.000000'}</td>
+                          <td style={{ padding: '6px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{((order.price || 0) * (order.amount || 0)).toFixed(2)}</td>
+                          <td style={{ padding: '6px 12px', textAlign: 'right' }}>
+                            <button onClick={() => handleCancelOrder(order.id)}
+                              style={{ padding: '2px 8px', backgroundColor: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: '600', transition: 'all 0.15s' }}
+                              onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--danger)'; e.currentTarget.style.color = '#fff'; }}
+                              onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--danger)'; }}>
+                              Cancel
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )
+              )}
+
+              {/* Order History */}
+              {bottomTab === 'HISTORY' && (
+                filteredHistory.length === 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '30px 0', color: 'var(--text-secondary)', fontSize: '13px', gap: '8px' }}>
+                    <svg width="40" height="40" viewBox="0 0 48 48" fill="none" opacity="0.3">
+                      <circle cx="24" cy="24" r="18" stroke="currentColor" strokeWidth="2.5" fill="none" />
+                      <path d="M24 14v10l6 4" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                    </svg>
+                    No order history
+                  </div>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border-color)', position: 'sticky', top: 0, backgroundColor: 'var(--bg-secondary)', zIndex: 10 }}>
+                        {['Date', 'Pair', 'Type', 'Side', 'Avg Price', 'Amount', 'Filled', 'Total', 'Status'].map((h, i) => (
+                          <th key={h} style={{ padding: '8px 12px', color: 'var(--text-secondary)', fontWeight: '500', textAlign: i >= 4 ? 'right' : 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredHistory.map((order) => (
+                        <tr key={order.id} style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-primary)', transition: 'background 0.1s' }}
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                          <td style={{ padding: '6px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '11px' }}>{new Date(order.createdAt).toLocaleString()}</td>
+                          <td style={{ padding: '6px 12px', fontWeight: '600' }}>{order.pair}</td>
+                          <td style={{ padding: '6px 12px', color: 'var(--text-secondary)' }}>{order.type}</td>
+                          <td style={{ padding: '6px 12px', fontWeight: '600', color: order.side === 'BUY' ? 'var(--success)' : 'var(--danger)' }}>{order.side}</td>
+                          <td style={{ padding: '6px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{order.price?.toFixed(2)}</td>
+                          <td style={{ padding: '6px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{order.amount?.toFixed(6)}</td>
+                          <td style={{ padding: '6px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{order.filled?.toFixed(6) || order.amount?.toFixed(6)}</td>
+                          <td style={{ padding: '6px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{((order.price || 0) * (order.amount || 0)).toFixed(2)}</td>
+                          <td style={{ padding: '6px 12px', textAlign: 'right' }}>
+                            <span style={{ padding: '2px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: '600', backgroundColor: order.status === 'FILLED' ? 'rgba(14,203,129,0.12)' : order.status === 'CANCELLED' ? 'rgba(246,70,93,0.12)' : 'rgba(240,185,11,0.12)', color: order.status === 'FILLED' ? 'var(--success)' : order.status === 'CANCELLED' ? 'var(--danger)' : 'var(--primary)' }}>
+                              {order.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )
+              )}
+
+              {/* Trade History */}
+              {bottomTab === 'TRADE' && (
+                filteredTradeHistory.length === 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '30px 0', color: 'var(--text-secondary)', fontSize: '13px', gap: '8px' }}>
+                    <svg width="40" height="40" viewBox="0 0 48 48" fill="none" opacity="0.3">
+                      <path d="M8 40L20 28L28 36L40 20" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    No trade history
+                  </div>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border-color)', position: 'sticky', top: 0, backgroundColor: 'var(--bg-secondary)', zIndex: 10 }}>
+                        {['Date', 'Pair', 'Side', 'Price', 'Amount', 'Total', 'Fee', 'Role'].map((h, i) => (
+                          <th key={h} style={{ padding: '8px 12px', color: 'var(--text-secondary)', fontWeight: '500', textAlign: i >= 3 ? 'right' : 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredTradeHistory.map((order) => {
+                        const fee = (order.price || 0) * (order.amount || 0) * 0.001;
+                        return (
+                          <tr key={order.id} style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-primary)', transition: 'background 0.1s' }}
+                            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
+                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                            <td style={{ padding: '6px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '11px' }}>{new Date(order.createdAt).toLocaleString()}</td>
+                            <td style={{ padding: '6px 12px', fontWeight: '600' }}>{order.pair}</td>
+                            <td style={{ padding: '6px 12px', fontWeight: '600', color: order.side === 'BUY' ? 'var(--success)' : 'var(--danger)' }}>{order.side}</td>
+                            <td style={{ padding: '6px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{order.price?.toFixed(2)}</td>
+                            <td style={{ padding: '6px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{order.amount?.toFixed(6)}</td>
+                            <td style={{ padding: '6px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{((order.price || 0) * (order.amount || 0)).toFixed(2)}</td>
+                            <td style={{ padding: '6px 12px', textAlign: 'right', fontFamily: 'monospace', color: '#848e9c' }}>{fee.toFixed(4)} USDT</td>
+                            <td style={{ padding: '6px 12px', textAlign: 'right' }}>
+                              <span style={{ color: '#848e9c', fontSize: '11px' }}>{order.type === 'LIMIT' ? 'Maker' : 'Taker'}</span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )
+              )}
+
+              {/* Funds */}
+              {bottomTab === 'FUNDS' && (
+                <div style={{ padding: '0' }}>
+                  {Object.keys(wallets).length === 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '30px 0', color: 'var(--text-secondary)', fontSize: '13px', gap: '8px' }}>
+                      <svg width="40" height="40" viewBox="0 0 48 48" fill="none" opacity="0.3">
+                        <rect x="6" y="16" width="36" height="26" rx="3" stroke="currentColor" strokeWidth="2.5" fill="none" />
+                        <path d="M14 16V12a10 10 0 0 1 20 0v4" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                        <circle cx="24" cy="29" r="3" fill="currentColor" />
+                      </svg>
+                      {user ? 'No funds found' : 'Log in to view funds'}
+                    </div>
+                  ) : (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid var(--border-color)', position: 'sticky', top: 0, backgroundColor: 'var(--bg-secondary)', zIndex: 10 }}>
+                          {['Coin', 'Total Balance', 'Available', 'In Order', 'BTC Value'].map((h, i) => (
+                            <th key={h} style={{ padding: '8px 12px', color: 'var(--text-secondary)', fontWeight: '500', textAlign: i >= 1 ? 'right' : 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(wallets).filter(([, bal]) => bal > 0).map(([coin, balance]) => {
+                          const btcPrice = watchlistTickers.find(t => t.symbol === 'BTCUSDT')?.price || 1;
+                          const coinUsdtPrice = coin === 'USDT' ? 1 : (watchlistTickers.find(t => t.symbol === `${coin}USDT`)?.price || 0);
+                          const btcValue = coinUsdtPrice * balance / btcPrice;
+                          return (
+                            <tr key={coin} style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-primary)', transition: 'background 0.1s' }}
+                              onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
+                              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                              <td style={{ padding: '6px 12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <CoinIcon coin={coin} size={20} />
+                                  <span style={{ fontWeight: '600' }}>{coin}</span>
+                                </div>
+                              </td>
+                              <td style={{ padding: '6px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{balance.toFixed(8)}</td>
+                              <td style={{ padding: '6px 12px', textAlign: 'right', fontFamily: 'monospace', color: '#0ecb81' }}>{balance.toFixed(8)}</td>
+                              <td style={{ padding: '6px 12px', textAlign: 'right', fontFamily: 'monospace', color: '#848e9c' }}>0.00000000</td>
+                              <td style={{ padding: '6px 12px', textAlign: 'right', fontFamily: 'monospace', color: '#848e9c' }}>
+                                {btcValue > 0 ? btcValue.toFixed(8) : '—'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* ── RIGHT COLUMN: Watchlist + Recent Trades ── */}
-        <div className="trading-right-col">
+        <div className="trading-right-col" style={{ height: '100%', display: 'flex', flexDirection: 'column', borderLeft: '1px solid var(--border-color)', padding: '6px', overflow: 'hidden', boxSizing: 'border-box', position: 'static' }}>
 
           {/* Watchlist */}
           <div style={{ display: 'flex', flexDirection: 'column', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', marginBottom: '8px', flex: '0 0 auto', maxHeight: '440px' }}>
@@ -1186,233 +1427,8 @@ export default function Trade({ params }) {
           </div>
         </div>
       </div>
-
-      {/* ── Bottom Orders Panel ── */}
-      <div style={{ backgroundColor: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)' }}>
-
-        {/* Tab header */}
-        <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--border-color)', padding: '0 16px', gap: '0' }}>
-          {[
-            { key: 'OPEN', label: 'Open Orders', count: filteredOpenOrders.length },
-            { key: 'HISTORY', label: 'Order History' },
-            { key: 'TRADE', label: 'Trade History' },
-            { key: 'FUNDS', label: 'Funds' },
-          ].map(({ key, label, count }) => {
-            const isTab = bottomTab === key;
-            return (
-              <button key={key} onClick={() => setBottomTab(key)}
-                style={{ padding: '12px 16px', fontSize: '13px', fontWeight: isTab ? '600' : '400', color: isTab ? 'var(--text-primary)' : 'var(--text-secondary)', background: 'none', border: 'none', borderBottom: isTab ? '2px solid var(--primary)' : '2px solid transparent', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }}>
-                {label}
-                {count > 0 && (
-                  <span style={{ marginLeft: '6px', backgroundColor: 'var(--primary)', color: '#000', borderRadius: '10px', fontSize: '11px', fontWeight: '700', padding: '1px 6px' }}>
-                    {count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-
-          {/* Filter by pair toggle */}
-          {(bottomTab === 'OPEN' || bottomTab === 'HISTORY' || bottomTab === 'TRADE') && (
-            <label style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#848e9c', cursor: 'pointer', userSelect: 'none' }}>
-              <input type="checkbox" checked={filterByPair} onChange={e => setFilterByPair(e.target.checked)} style={{ accentColor: '#f0b90b', width: '13px', height: '13px', cursor: 'pointer' }} />
-              Hide Other Pairs
-            </label>
-          )}
-        </div>
-
-        {/* Tab body */}
-        <div style={{ overflowX: 'auto', minHeight: '140px', maxHeight: '280px', overflowY: 'auto' }}>
-
-          {/* Open Orders */}
-          {bottomTab === 'OPEN' && (
-            filteredOpenOrders.length === 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 0', color: 'var(--text-secondary)', fontSize: '13px', gap: '8px' }}>
-                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" opacity="0.3">
-                  <rect x="8" y="12" width="32" height="4" rx="2" fill="currentColor" />
-                  <rect x="8" y="22" width="24" height="4" rx="2" fill="currentColor" />
-                  <rect x="8" y="32" width="16" height="4" rx="2" fill="currentColor" />
-                </svg>
-                No open orders
-              </div>
-            ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                    {['Date', 'Pair', 'Type', 'Side', 'Price', 'Amount', 'Filled', 'Total', 'Action'].map((h, i) => (
-                      <th key={h} style={{ padding: '8px 12px', color: 'var(--text-secondary)', fontWeight: '500', textAlign: i >= 4 ? 'right' : 'left', whiteSpace: 'nowrap' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredOpenOrders.map((order) => (
-                    <tr key={order.id} style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-primary)', transition: 'background 0.1s' }}
-                      onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
-                      onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                      <td style={{ padding: '8px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '11px' }}>{new Date(order.createdAt).toLocaleString()}</td>
-                      <td style={{ padding: '8px 12px', fontWeight: '600' }}>{order.pair}</td>
-                      <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{order.type}</td>
-                      <td style={{ padding: '8px 12px', fontWeight: '600', color: order.side === 'BUY' ? 'var(--success)' : 'var(--danger)' }}>{order.side}</td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{order.price?.toFixed(2)}</td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{order.amount?.toFixed(6)}</td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{order.filled?.toFixed(6) || '0.000000'}</td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{((order.price || 0) * (order.amount || 0)).toFixed(2)}</td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right' }}>
-                        <button onClick={() => handleCancelOrder(order.id)}
-                          style={{ padding: '4px 10px', backgroundColor: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: '600', transition: 'all 0.15s' }}
-                          onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--danger)'; e.currentTarget.style.color = '#fff'; }}
-                          onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--danger)'; }}>
-                          Cancel
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )
-          )}
-
-          {/* Order History */}
-          {bottomTab === 'HISTORY' && (
-            filteredHistory.length === 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 0', color: 'var(--text-secondary)', fontSize: '13px', gap: '8px' }}>
-                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" opacity="0.3">
-                  <circle cx="24" cy="24" r="18" stroke="currentColor" strokeWidth="2.5" fill="none" />
-                  <path d="M24 14v10l6 4" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-                </svg>
-                No order history
-              </div>
-            ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                    {['Date', 'Pair', 'Type', 'Side', 'Avg Price', 'Amount', 'Filled', 'Total', 'Status'].map((h, i) => (
-                      <th key={h} style={{ padding: '8px 12px', color: 'var(--text-secondary)', fontWeight: '500', textAlign: i >= 4 ? 'right' : 'left', whiteSpace: 'nowrap' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredHistory.map((order) => (
-                    <tr key={order.id} style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-primary)', transition: 'background 0.1s' }}
-                      onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
-                      onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                      <td style={{ padding: '8px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '11px' }}>{new Date(order.createdAt).toLocaleString()}</td>
-                      <td style={{ padding: '8px 12px', fontWeight: '600' }}>{order.pair}</td>
-                      <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{order.type}</td>
-                      <td style={{ padding: '8px 12px', fontWeight: '600', color: order.side === 'BUY' ? 'var(--success)' : 'var(--danger)' }}>{order.side}</td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{order.price?.toFixed(2)}</td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{order.amount?.toFixed(6)}</td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{order.filled?.toFixed(6) || order.amount?.toFixed(6)}</td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{((order.price || 0) * (order.amount || 0)).toFixed(2)}</td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right' }}>
-                        <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600', backgroundColor: order.status === 'FILLED' ? 'rgba(14,203,129,0.12)' : order.status === 'CANCELLED' ? 'rgba(246,70,93,0.12)' : 'rgba(240,185,11,0.12)', color: order.status === 'FILLED' ? 'var(--success)' : order.status === 'CANCELLED' ? 'var(--danger)' : 'var(--primary)' }}>
-                          {order.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )
-          )}
-
-          {/* Trade History */}
-          {bottomTab === 'TRADE' && (
-            filteredTradeHistory.length === 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 0', color: 'var(--text-secondary)', fontSize: '13px', gap: '8px' }}>
-                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" opacity="0.3">
-                  <path d="M8 40L20 28L28 36L40 20" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                No trade history
-              </div>
-            ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                    {['Date', 'Pair', 'Side', 'Price', 'Amount', 'Total', 'Fee', 'Role'].map((h, i) => (
-                      <th key={h} style={{ padding: '8px 12px', color: 'var(--text-secondary)', fontWeight: '500', textAlign: i >= 3 ? 'right' : 'left', whiteSpace: 'nowrap' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTradeHistory.map((order) => {
-                    const fee = (order.price || 0) * (order.amount || 0) * 0.001;
-                    return (
-                      <tr key={order.id} style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-primary)', transition: 'background 0.1s' }}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
-                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                        <td style={{ padding: '8px 12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '11px' }}>{new Date(order.createdAt).toLocaleString()}</td>
-                        <td style={{ padding: '8px 12px', fontWeight: '600' }}>{order.pair}</td>
-                        <td style={{ padding: '8px 12px', fontWeight: '600', color: order.side === 'BUY' ? 'var(--success)' : 'var(--danger)' }}>{order.side}</td>
-                        <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{order.price?.toFixed(2)}</td>
-                        <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{order.amount?.toFixed(6)}</td>
-                        <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{((order.price || 0) * (order.amount || 0)).toFixed(2)}</td>
-                        <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace', color: '#848e9c' }}>{fee.toFixed(4)} USDT</td>
-                        <td style={{ padding: '8px 12px', textAlign: 'right' }}>
-                          <span style={{ color: '#848e9c', fontSize: '11px' }}>{order.type === 'LIMIT' ? 'Maker' : 'Taker'}</span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )
-          )}
-
-          {/* Funds */}
-          {bottomTab === 'FUNDS' && (
-            <div style={{ padding: '0' }}>
-              {Object.keys(wallets).length === 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 0', color: 'var(--text-secondary)', fontSize: '13px', gap: '8px' }}>
-                  <svg width="48" height="48" viewBox="0 0 48 48" fill="none" opacity="0.3">
-                    <rect x="6" y="16" width="36" height="26" rx="3" stroke="currentColor" strokeWidth="2.5" fill="none" />
-                    <path d="M14 16V12a10 10 0 0 1 20 0v4" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-                    <circle cx="24" cy="29" r="3" fill="currentColor" />
-                  </svg>
-                  {user ? 'No funds found' : 'Log in to view funds'}
-                </div>
-              ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                      {['Coin', 'Total Balance', 'Available', 'In Order', 'BTC Value'].map((h, i) => (
-                        <th key={h} style={{ padding: '8px 12px', color: 'var(--text-secondary)', fontWeight: '500', textAlign: i >= 1 ? 'right' : 'left', whiteSpace: 'nowrap' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(wallets).filter(([, bal]) => bal > 0).map(([coin, balance]) => {
-                      const btcPrice = watchlistTickers.find(t => t.symbol === 'BTCUSDT')?.price || 1;
-                      const coinUsdtPrice = coin === 'USDT' ? 1 : (watchlistTickers.find(t => t.symbol === `${coin}USDT`)?.price || 0);
-                      const btcValue = coinUsdtPrice * balance / btcPrice;
-                      return (
-                        <tr key={coin} style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-primary)', transition: 'background 0.1s' }}
-                          onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
-                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                          <td style={{ padding: '8px 12px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <CoinIcon coin={coin} size={20} />
-                              <span style={{ fontWeight: '600' }}>{coin}</span>
-                            </div>
-                          </td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{balance.toFixed(8)}</td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace', color: '#0ecb81' }}>{balance.toFixed(8)}</td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace', color: '#848e9c' }}>0.00000000</td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace', color: '#848e9c' }}>
-                            {btcValue > 0 ? btcValue.toFixed(8) : '—'}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <Footer />
     </div>
   );
 }
+
+

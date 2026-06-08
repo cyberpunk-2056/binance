@@ -66,6 +66,7 @@ const CHART_TYPES = [
 export default function TradingViewChart({ symbol }) {
   const [activeInterval, setActiveInterval] = useState('60');   // default 1H
   const [activeStyle, setActiveStyle] = useState('1');           // default Candlestick
+  const [chartView, setChartView] = useState('tv');             // default 'tv' (TradingView)
   const [showChartMenu, setShowChartMenu] = useState(false);
   const [showIndicMenu, setShowIndicMenu] = useState(false);
   const containerRef = useRef(null);
@@ -152,7 +153,7 @@ export default function TradingViewChart({ symbol }) {
   const activeChartType = CHART_TYPES.find(c => c.style === activeStyle) || CHART_TYPES[0];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '520px', backgroundColor: '#1e2026' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', backgroundColor: '#1e2026' }}>
 
       {/* ── Binance-style Chart Toolbar ── */}
       <div style={{
@@ -192,6 +193,41 @@ export default function TradingViewChart({ symbol }) {
               {iv.label}
             </button>
           ))}
+        </div>
+
+        {/* Divider */}
+        <div style={{ width: '1px', height: '20px', backgroundColor: '#2b2f36', margin: '0 4px', flexShrink: 0 }} />
+
+        {/* View toggles: Original / TradingView / Depth */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1px', marginRight: '8px', flexShrink: 0 }}>
+          {['Original', 'TradingView', 'Depth'].map(view => {
+            const isAct = (view === 'TradingView' && chartView === 'tv') || 
+                          (view === 'Original' && chartView === 'original') || 
+                          (view === 'Depth' && chartView === 'depth');
+            const viewKey = view === 'TradingView' ? 'tv' : view.toLowerCase();
+            return (
+              <button
+                key={view}
+                onClick={() => setChartView(viewKey)}
+                style={{
+                  padding: '4px 8px',
+                  fontSize: '12px',
+                  fontWeight: isAct ? '700' : '400',
+                  color: isAct ? '#f0b90b' : '#848e9c',
+                  backgroundColor: isAct ? 'rgba(240,185,11,0.1)' : 'transparent',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => { if (!isAct) e.currentTarget.style.color = '#eaecef'; }}
+                onMouseLeave={e => { if (!isAct) e.currentTarget.style.color = '#848e9c'; }}
+              >
+                {view}
+              </button>
+            );
+          })}
         </div>
 
         {/* Divider */}
@@ -366,10 +402,41 @@ export default function TradingViewChart({ symbol }) {
         </button>
       </div>
 
-      {/* ── TradingView Chart Frame ── */}
+      {/* Depth Chart view */}
+      <div style={{ display: chartView === 'depth' ? 'block' : 'none', flex: 1, overflow: 'hidden', backgroundColor: '#161a1e' }}>
+        <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#161a1e', padding: '20px', boxSizing: 'border-box' }}>
+          <svg width="100%" height="90%" viewBox="0 0 600 300" preserveAspectRatio="none">
+            {/* Bids fill (Green) */}
+            <path d="M 0 300 L 0 50 L 100 80 L 180 120 L 220 180 L 270 240 L 270 300 Z" fill="rgba(14,203,129,0.15)" stroke="#0ecb81" strokeWidth="2" />
+            {/* Asks fill (Red) */}
+            <path d="M 330 300 L 330 240 L 380 180 L 420 120 L 500 80 L 600 50 L 600 300 Z" fill="rgba(246,70,93,0.15)" stroke="#f6465d" strokeWidth="2" />
+            
+            {/* Grid lines */}
+            <line x1="0" y1="280" x2="600" y2="280" stroke="#2b2f36" strokeWidth="1" strokeDasharray="3,3" opacity="0.4" />
+            <line x1="0" y1="200" x2="600" y2="200" stroke="#2b2f36" strokeWidth="1" strokeDasharray="3,3" opacity="0.4" />
+            <line x1="0" y1="120" x2="600" y2="120" stroke="#2b2f36" strokeWidth="1" strokeDasharray="3,3" opacity="0.4" />
+            <line x1="300" y1="0" x2="300" y2="300" stroke="#2b2f36" strokeWidth="1" strokeDasharray="3,3" opacity="0.4" />
+            
+            {/* Price labels at bottom */}
+            <text x="50" y="295" fill="#848e9c" fontSize="10" fontFamily="monospace">62,100</text>
+            <text x="150" y="295" fill="#848e9c" fontSize="10" fontFamily="monospace">62,500</text>
+            <text x="250" y="295" fill="#848e9c" fontSize="10" fontFamily="monospace">62,900</text>
+            
+            <text x="335" y="295" fill="#848e9c" fontSize="10" fontFamily="monospace">63,100</text>
+            <text x="435" y="295" fill="#848e9c" fontSize="10" fontFamily="monospace">63,500</text>
+            <text x="535" y="295" fill="#848e9c" fontSize="10" fontFamily="monospace">63,900</text>
+          </svg>
+          <div style={{ color: '#eaecef', fontSize: '11px', marginTop: '5px', display: 'flex', gap: '20px' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><span style={{ width: '8px', height: '8px', backgroundColor: '#0ecb81', display: 'inline-block', borderRadius: '1px' }}></span>Bids</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><span style={{ width: '8px', height: '8px', backgroundColor: '#f6465d', display: 'inline-block', borderRadius: '1px' }}></span>Asks</span>
+          </div>
+        </div>
+      </div>
+
+      {/* TradingView Chart Frame */}
       <div
         ref={containerRef}
-        style={{ flex: 1, overflow: 'hidden', backgroundColor: '#1e2026' }}
+        style={{ display: chartView !== 'depth' ? 'block' : 'none', flex: 1, overflow: 'hidden', backgroundColor: '#1e2026' }}
       />
     </div>
   );

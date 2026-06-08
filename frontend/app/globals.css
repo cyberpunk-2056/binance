@@ -792,10 +792,10 @@ input, textarea, select {
 
 /* Visibility helpers */
 .mobile-only {
-  display: none !important;
+  display: none;
 }
 .desktop-only {
-  display: block !important;
+  display: block;
 }
 
 @media (max-width: 768px) {
@@ -805,4 +805,9 @@ input, textarea, select {
   .desktop-only {
     display: none !important;
   }
+}
+
+body.trading-page-active {
+  overflow: hidden;
+  height: 100vh;
 }

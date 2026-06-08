@@ -36,6 +36,7 @@ router.get('/tickers', async (req, res) => {
         baseAsset: t.symbol.replace('USDT', ''),
         price: parseFloat(t.lastPrice),
         change: parseFloat(t.priceChangePercent),
+        priceChange: parseFloat(t.priceChange),
         high: parseFloat(t.highPrice),
         low: parseFloat(t.lowPrice),
         volume: parseFloat(t.volume),
@@ -47,6 +48,26 @@ router.get('/tickers', async (req, res) => {
   } catch (err) {
     console.error('Markets tickers error:', err.message);
     res.status(500).json({ error: 'Failed to fetch market data', tickers: [] });
+  }
+});
+
+// GET /api/markets/:symbol/ticker
+router.get('/:symbol/ticker', async (req, res) => {
+  try {
+    const { symbol } = req.params;
+    const t = await fetchBinance(`/api/v3/ticker/24hr?symbol=${symbol.toUpperCase()}`);
+    res.json({
+      symbol: t.symbol,
+      price: parseFloat(t.lastPrice),
+      change: parseFloat(t.priceChangePercent),
+      priceChange: parseFloat(t.priceChange),
+      high: parseFloat(t.highPrice),
+      low: parseFloat(t.lowPrice),
+      volume: parseFloat(t.volume),
+      quoteVolume: parseFloat(t.quoteVolume)
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch 24h ticker' });
   }
 });
 

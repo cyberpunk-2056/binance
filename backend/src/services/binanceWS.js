@@ -35,6 +35,7 @@ const initBinanceWS = (io) => {
               symbol,
               price: parseFloat(ticker.c),
               change: parseFloat(ticker.P),
+              priceChange: parseFloat(ticker.p),
               high: parseFloat(ticker.h),
               low: parseFloat(ticker.l),
               volume: parseFloat(ticker.v),
